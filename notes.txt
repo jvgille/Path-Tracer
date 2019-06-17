@@ -1,0 +1,9 @@
+
+extensions:
+	median filter 							<- !!!
+	kelemen mutation
+	multiple importance sampling with BDPT
+
+
+
+specular–diffuse–specular effects (reflected/refracted caustics) hard for BPT
