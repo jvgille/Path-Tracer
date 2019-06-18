@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 2.6)
 project(MLT)
 
 add_executable(MLT main.cpp)
-target_compile_options(MLT PUBLIC -std=c++11 -Wall -O3)
+target_compile_options(MLT PUBLIC -std=c++17 -O3)
 
 find_package(SDL)
 
