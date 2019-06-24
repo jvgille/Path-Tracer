@@ -13,9 +13,9 @@ using glm::vec3, glm::ivec2, glm::vec2, glm::mat3;
 const float PI = 3.14159265;
 const float EPSILON = 0.00001;
 
-const int SCREEN_WIDTH = 500;
-const int SCREEN_HEIGHT = 500;
-const float focal_length = SCREEN_HEIGHT;
+const int SCREEN_WIDTH = 200;
+const int SCREEN_HEIGHT = 200;
+
 SDL_Surface* screen;
 int t;
 vector<Triangle> triangles;
@@ -28,6 +28,7 @@ struct {
     vec3 pos = vec3(0, 0, -3.001);
     vec2 rot = vec2(0, 0);
     mat3 rot_matrix = mat3(0);
+    float focal_length = SCREEN_HEIGHT;
 } camera;
 
 struct Intersection {
@@ -41,19 +42,21 @@ bool on_screen(int u, int v) {
            0 <= v && v < SCREEN_HEIGHT;
 }
 
-void interpolate(const vec2 & a, const vec2 & b, vector<vec2> & result) {
-    const vec2 diff = b - a;
-    float steps = glm::max(float(result.size() - 1), 1.0f);
-    for (uint i = 0; i < result.size(); i++) {
-        result[i] = a + diff * (i / steps);
+template<class T>
+vector<T> interpolate(const T & a, const T & b, const uint steps) {
+    vector<T> res;
+    const T diff = b - a;
+    for (uint i = 0; i < steps; i++) {
+        res.push_back(a + diff * (float(i) / steps));
     }
+    return res;
 }
 
 vec2 vertex_shader(const vec3 & v) {
     vec2 p;
     vec3 pos = (v - camera.pos) * camera.rot_matrix;
-    p.x = focal_length * pos.x/pos.z + SCREEN_WIDTH/2;
-    p.y = focal_length * pos.y/pos.z + SCREEN_HEIGHT/2;
+    p.x = camera.focal_length * pos.x/pos.z + SCREEN_WIDTH/2;
+    p.y = camera.focal_length * pos.y/pos.z + SCREEN_HEIGHT/2;
     return p;
 }
 
@@ -61,8 +64,7 @@ void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
     vec2 diff = a - b;
     ivec2 delta = glm::abs(ivec2(diff.x, diff.y));
     int num_pixels = glm::max(delta.x, delta.y) + 1;
-    vector<vec2> line(num_pixels);
-    interpolate(a, b, line);
+    vector<vec2> line = interpolate(a, b, num_pixels);
 
     for (const vec2 & v : line) {
         PutPixelSDL(screen, v.x, v.y, color);
@@ -142,11 +144,13 @@ void draw() {
 
     for (int v = 0; v < SCREEN_HEIGHT; v++) {
         for (int u = 0; u < SCREEN_WIDTH; u++) {
-            vec3 d = camera.rot_matrix * vec3(u - SCREEN_WIDTH/2, v - SCREEN_HEIGHT/2, focal_length);
+            vec3 dir = camera.rot_matrix * vec3(u - SCREEN_WIDTH/2,
+                                                v - SCREEN_HEIGHT/2,
+                                                camera.focal_length);
             vec3 color(0,0,0);
 
-            if (auto closest = closest_intersection(camera.pos, d, triangles)) {
-                color = closest->triangle.get().color * (direct_light(*closest) + indirect_light);
+            if (auto res = closest_intersection(camera.pos, dir, triangles)) {
+                color = res->triangle.get().color * (direct_light(*res) + indirect_light);
             }
 
             PutPixelSDL(screen, u, v, color);
@@ -223,9 +227,103 @@ void update() {
         light_pos.y += MOVE_SPEED;
 }
 
+struct DomainLocation {
+    int x_loc, y_loc;
+};
+
+float luminance(const vec3 & v) {
+    return 0.299*v.x+ 0.587*v.y+ 0.114*v.z;
+}
+
+#include <cstdlib>
+
+float random_real(float min, float max) {
+    return min + (float(rand())/RAND_MAX)*(max-min);
+}
+
+int random_int(int min, int max) {
+    return min + rand() % (max-min);
+}
+
+DomainLocation initial_path() {
+    return DomainLocation{0, 0};
+}
+
+DomainLocation mutate_according_to_T(const DomainLocation & X) {
+    int x = random_int(0, SCREEN_WIDTH);
+    int y = random_int(0, SCREEN_HEIGHT);
+    return DomainLocation{x, y};
+}
+
+vec3 evaluate_light_path(const DomainLocation & d) {
+    float r = 255*(float(d.x_loc)/SCREEN_WIDTH);
+    float g = 255*(1-float(d.y_loc)/SCREEN_HEIGHT);
+    float b = 255*(float(d.x_loc * d.y_loc)/(SCREEN_WIDTH*SCREEN_HEIGHT));
+    return vec3(r, g, b);
+}
+
+float T(const DomainLocation & X, const DomainLocation & Y) {
+    return 1.0f / (SCREEN_WIDTH*SCREEN_HEIGHT);
+}
+
+void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
+    vec3 histogram[SCREEN_WIDTH][SCREEN_HEIGHT]; // todo zero
+    vec3 average_sample(0,0,0);
+
+    DomainLocation X, Y;
+    X = initial_path();
+    vec3 color_X = evaluate_light_path(X);
+    float Fx = luminance(color_X);
+    for (uint i = 0; i < MUTATIONS && NoQuitMessageSDL(); i++) {
+        Y = mutate_according_to_T(X);
+
+        float Tyx = T(Y, X);
+        float Txy = T(X, Y);
+
+        vec3 color_Y = evaluate_light_path(Y); // evaluate X_f
+        float Fy = luminance(color_Y);
+        color_Y /= Fy;
+
+        float Axy = glm::min(1.0f, (Fy * Txy) / (Fx * Tyx));
+        if (random_real(0.0, 1.0) < Axy){
+            X = Y;
+            Fx = Fy;
+            color_X = color_Y;
+        }
+        histogram[X.x_loc][X.y_loc] += color_X;
+        average_sample = (color_X + float(i)*average_sample)/float(i+1);
+
+        // TODO scale before drawing..?
+        // draw to screen
+        if (i % DRAW_INTERVAL == 0) {
+            float samples_per_bin = float(i)/(SCREEN_WIDTH*SCREEN_HEIGHT);
+            float scale = luminance(average_sample)/samples_per_bin;
+
+            SDL_FillRect(screen, 0, 0);
+            if (SDL_MUSTLOCK(screen))
+                SDL_LockSurface(screen);
+
+            for (int u = 0; u < SCREEN_WIDTH; u++) {
+                for (int v = 0; v < SCREEN_HEIGHT; v++) {
+                    PutPixelSDL(screen, u, v, scale*histogram[u][v]);
+                }
+            }
+            if (SDL_MUSTLOCK(screen))
+                SDL_UnlockSurface(screen);
+
+            SDL_UpdateRect(screen, 0, 0, 0, 0);
+        }
+    }
+
+}
+
 int main(int argc, char* argv[]) {
-    LoadTestModel(triangles);
     screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    mlt(1000);
+    return 0;
+
+    LoadTestModel(triangles);
     int frames = 0;
     const int t_0 = SDL_GetTicks();
     t = t_0;
