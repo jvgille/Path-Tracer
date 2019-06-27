@@ -13,8 +13,8 @@ using glm::vec3, glm::ivec2, glm::vec2, glm::mat3;
 const float PI = 3.14159265;
 const float EPSILON = 0.00001;
 
-const int SCREEN_WIDTH = 200;
-const int SCREEN_HEIGHT = 200;
+const int SCREEN_WIDTH = 100;
+const int SCREEN_HEIGHT = 100;
 
 SDL_Surface* screen;
 int t;
@@ -232,7 +232,7 @@ struct DomainLocation {
 };
 
 float luminance(const vec3 & v) {
-    return 0.299*v.x+ 0.587*v.y+ 0.114*v.z;
+    return (0.299*v.x+ 0.587*v.y+ 0.114*v.z);
 }
 
 #include <cstdlib>
@@ -256,9 +256,9 @@ DomainLocation mutate_according_to_T(const DomainLocation & X) {
 }
 
 vec3 evaluate_light_path(const DomainLocation & d) {
-    float r = 255*(float(d.x_loc)/SCREEN_WIDTH);
-    float g = 255*(1-float(d.y_loc)/SCREEN_HEIGHT);
-    float b = 255*(float(d.x_loc * d.y_loc)/(SCREEN_WIDTH*SCREEN_HEIGHT));
+    float r = (float(d.y_loc)/SCREEN_HEIGHT);
+    float g = 0; //(float(d.x_loc)/SCREEN_WIDTH);
+    float b = 0;
     return vec3(r, g, b);
 }
 
@@ -267,14 +267,16 @@ float T(const DomainLocation & X, const DomainLocation & Y) {
 }
 
 void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
-    vec3 histogram[SCREEN_WIDTH][SCREEN_HEIGHT]; // todo zero
-    vec3 average_sample(0,0,0);
+    // TODO more doubles!
+
+    vec3 histogram[SCREEN_WIDTH][SCREEN_HEIGHT];
+    double acc_luminance = 0;
 
     DomainLocation X, Y;
     X = initial_path();
     vec3 color_X = evaluate_light_path(X);
     float Fx = luminance(color_X);
-    for (uint i = 0; i < MUTATIONS && NoQuitMessageSDL(); i++) {
+    for (uint i = 0; int(i) != MUTATIONS && NoQuitMessageSDL(); i++) {
         Y = mutate_according_to_T(X);
 
         float Tyx = T(Y, X);
@@ -291,13 +293,18 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
             color_X = color_Y;
         }
         histogram[X.x_loc][X.y_loc] += color_X;
-        average_sample = (color_X + float(i)*average_sample)/float(i+1);
+        acc_luminance += Fx;
 
-        // TODO scale before drawing..?
         // draw to screen
         if (i % DRAW_INTERVAL == 0) {
-            float samples_per_bin = float(i)/(SCREEN_WIDTH*SCREEN_HEIGHT);
-            float scale = luminance(average_sample)/samples_per_bin;
+            double samples_per_bin = double(i)/(SCREEN_WIDTH*SCREEN_HEIGHT);
+            double scale = (acc_luminance/i)/samples_per_bin;
+
+            /* cerr << "mutations: " << i << endl;
+            cerr << "samples per bin: " << samples_per_bin << endl;
+            cerr << "acc_luminance: " << acc_luminance << endl;
+            cerr << "average luminance: " << (acc_luminance/i) << endl;
+            cerr << "scale: " << scale << endl; */
 
             SDL_FillRect(screen, 0, 0);
             if (SDL_MUSTLOCK(screen))
@@ -305,7 +312,12 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
 
             for (int u = 0; u < SCREEN_WIDTH; u++) {
                 for (int v = 0; v < SCREEN_HEIGHT; v++) {
-                    PutPixelSDL(screen, u, v, scale*histogram[u][v]);
+                    if (u > SCREEN_WIDTH/2) {
+                        PutPixelSDL(screen, u, v, float(scale)*histogram[u][v]);
+                    } else {
+                        DomainLocation temp{u, v};
+                        PutPixelSDL(screen, u, v, evaluate_light_path(temp));
+                    }
                 }
             }
             if (SDL_MUSTLOCK(screen))
@@ -314,13 +326,12 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
             SDL_UpdateRect(screen, 0, 0, 0, 0);
         }
     }
-
 }
 
 int main(int argc, char* argv[]) {
     screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    mlt(1000);
+    mlt(1000000);
     return 0;
 
     LoadTestModel(triangles);
