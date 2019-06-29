@@ -14,8 +14,8 @@ using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 const float PI = 3.14159265;
 const float EPSILON = 0.00001;
 
-const int SCREEN_WIDTH = 100;
-const int SCREEN_HEIGHT = 100;
+const int SCREEN_WIDTH = 200;
+const int SCREEN_HEIGHT = 200;
 
 SDL_Surface* screen;
 int t;
@@ -255,8 +255,8 @@ DomainLocation mutate_according_to_T(const DomainLocation & X) {
 }
 
 dvec3 evaluate_light_path(const DomainLocation & d) {
-    double r = (double(d.y_loc)/SCREEN_HEIGHT);
-    double g = 0; //(float(d.x_loc)/SCREEN_WIDTH);
+    double r = double(d.y_loc)/SCREEN_HEIGHT;
+    double g = double(d.x_loc)/SCREEN_WIDTH;
     double b = 0;
     return dvec3(r, g, b);
 }
@@ -265,7 +265,7 @@ double T(const DomainLocation & X, const DomainLocation & Y) {
     return 1.0 / (SCREEN_WIDTH*SCREEN_HEIGHT);
 }
 
-void draw_histogram(const vector<vector<dvec3>> & histogram, double scale) {
+void draw_histogram(const vector<vector<dvec3>> & histogram, const double scale) {
     SDL_FillRect(screen, 0, 0);
     if (SDL_MUSTLOCK(screen))
         SDL_LockSurface(screen);
@@ -287,9 +287,7 @@ void draw_histogram(const vector<vector<dvec3>> & histogram, double scale) {
 }
 
 void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
-    // TODO more doubles!
-    // what happens for black? zero luminance, infinite scaling?
-
+    // todo use std::array instead
     vector<vector<dvec3>> histogram(SCREEN_WIDTH, vector<dvec3>(SCREEN_HEIGHT));
     double acc_luminance = 0;
 
@@ -306,6 +304,7 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
         dvec3 color_Y = evaluate_light_path(Y); // evaluate X_f
         double Fy = luminance(color_Y);
         color_Y /= Fy;
+        acc_luminance += Fy; // for finding scaling factor
 
         double Axy = glm::min(1.0, (Fy * Txy) / (Fx * Tyx));
         if (random_real(0.0, 1.0) < Axy){
@@ -314,19 +313,12 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
             color_X = color_Y;
         }
         histogram[X.x_loc][X.y_loc] += color_X;
-        acc_luminance += Fx;
 
         // draw to screen
         if (i % DRAW_INTERVAL == 0) {
             double samples_per_bin = double(i)/(SCREEN_WIDTH*SCREEN_HEIGHT);
             double average_luminance = acc_luminance/i;
             double scale = average_luminance/samples_per_bin;
-
-            /* cerr << "mutations: " << i << endl;
-            cerr << "samples per bin: " << samples_per_bin << endl;
-            cerr << "acc_luminance: " << acc_luminance << endl;
-            cerr << "average luminance: " << (acc_luminance/i) << endl;
-            cerr << "scale: " << scale << endl; */
 
             draw_histogram(histogram, scale);
         }
