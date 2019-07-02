@@ -1,6 +1,7 @@
 #include <iostream>
 #include <optional>
 #include <functional>
+#include <array>
 #include <cstdlib>
 
 #include <glm/glm.hpp>
@@ -11,11 +12,13 @@
 using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 
+// TODO typedef glm::dvec3 vec3 ???
+
 const float PI = 3.14159265;
 const float EPSILON = 0.00001;
 
-const int SCREEN_WIDTH = 200;
-const int SCREEN_HEIGHT = 200;
+const int SCREEN_WIDTH = 300;
+const int SCREEN_HEIGHT = 300;
 
 SDL_Surface* screen;
 int t;
@@ -38,9 +41,9 @@ struct Intersection {
     reference_wrapper<const Triangle> triangle;
 };
 
-bool on_screen(int u, int v) {
-    return 0 <= u && u < SCREEN_WIDTH &&
-           0 <= v && v < SCREEN_HEIGHT;
+bool on_screen(const vec2 & v) {
+    return 0 <= v.x && v.x < SCREEN_WIDTH &&
+           0 <= v.y && v.y < SCREEN_HEIGHT;
 }
 
 template<class T>
@@ -62,6 +65,9 @@ vec2 vertex_shader(const vec3 & v) {
 }
 
 void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
+    if (!on_screen(a) || !on_screen(b)) {
+        return;
+    }
     vec2 diff = a - b;
     ivec2 delta = glm::abs(ivec2(diff.x, diff.y));
     int num_pixels = glm::max(delta.x, delta.y) + 1;
@@ -73,6 +79,7 @@ void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
 }
 
 void draw_polygon_edges(const vector<vec3> & vertices, const vec3 & color = vec3(1,1,1)) {
+    // todo draws lines behind camera
     vector<vec2> projected_vertices;
     for (const vec3 & v : vertices) {
         projected_vertices.push_back(vertex_shader(v));
@@ -151,6 +158,7 @@ void draw() {
             vec3 color(0,0,0);
 
             if (auto res = closest_intersection(camera.pos, dir, triangles)) {
+                // TODO the indirect_light term below is the one targeted by path tracing
                 color = res->triangle.get().color * (direct_light(*res) + indirect_light);
             }
 
@@ -228,8 +236,9 @@ void update() {
         light_pos.y += MOVE_SPEED;
 }
 
-struct DomainLocation {
-    int x_loc, y_loc;
+struct LightPath {
+    // pixel coordinates of path origin
+    int u, v;
 };
 
 double luminance(const dvec3 & v) {
@@ -244,24 +253,24 @@ int random_int(int min, int max) {
     return min + rand() % (max-min);
 }
 
-DomainLocation initial_path() {
-    return DomainLocation{0, 0};
+LightPath initial_path() {
+    return LightPath{0, 0};
 }
 
-DomainLocation mutate_according_to_T(const DomainLocation & X) {
+LightPath mutate_according_to_T(const LightPath & X) {
     int x = random_int(0, SCREEN_WIDTH);
     int y = random_int(0, SCREEN_HEIGHT);
-    return DomainLocation{x, y};
+    return LightPath{x, y};
 }
 
-dvec3 evaluate_light_path(const DomainLocation & d) {
-    double r = double(d.y_loc)/SCREEN_HEIGHT;
-    double g = double(d.x_loc)/SCREEN_WIDTH;
+dvec3 evaluate_light_path(const LightPath & d) {
+    double r = double(d.v)/SCREEN_HEIGHT;
+    double g = double(d.u)/SCREEN_WIDTH;
     double b = 0;
     return dvec3(r, g, b);
 }
 
-double T(const DomainLocation & X, const DomainLocation & Y) {
+double T(const LightPath & X, const LightPath & Y) {
     return 1.0 / (SCREEN_WIDTH*SCREEN_HEIGHT);
 }
 
@@ -275,7 +284,7 @@ void draw_histogram(const vector<vector<dvec3>> & histogram, const double scale)
             if (u > SCREEN_WIDTH/2) {
                 PutPixelSDL(screen, u, v, vec3(scale*histogram[u][v]));
             } else {
-                DomainLocation temp{u, v};
+                LightPath temp{u, v};
                 PutPixelSDL(screen, u, v, vec3(evaluate_light_path(temp)));
             }
         }
@@ -287,16 +296,15 @@ void draw_histogram(const vector<vector<dvec3>> & histogram, const double scale)
 }
 
 void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
-    // todo use std::array instead
     vector<vector<dvec3>> histogram(SCREEN_WIDTH, vector<dvec3>(SCREEN_HEIGHT));
     double acc_luminance = 0;
 
-    DomainLocation X, Y;
-    X = initial_path();
+    LightPath X = initial_path();
     dvec3 color_X = evaluate_light_path(X);
     double Fx = luminance(color_X);
+
     for (int i = 0; i != MUTATIONS && NoQuitMessageSDL(); i++) {
-        Y = mutate_according_to_T(X);
+        LightPath Y = mutate_according_to_T(X);
 
         double Tyx = T(Y, X);
         double Txy = T(X, Y);
@@ -312,7 +320,7 @@ void mlt(uint DRAW_INTERVAL = 1, int MUTATIONS = -1) {
             Fx = Fy;
             color_X = color_Y;
         }
-        histogram[X.x_loc][X.y_loc] += color_X;
+        histogram[X.u][X.v] += color_X;
 
         // draw to screen
         if (i % DRAW_INTERVAL == 0) {
