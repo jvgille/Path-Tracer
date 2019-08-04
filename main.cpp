@@ -118,10 +118,6 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir,
     return closest;
 }
 
-float sq(float x) {
-    return x*x;
-}
-
 vec3 direct_light(const Intersection & i) {
     vec3 light_direction = light_pos - i.point;
 
@@ -131,7 +127,7 @@ vec3 direct_light(const Intersection & i) {
     }
 
     float res = glm::max(0.0f, glm::dot(glm::normalize(light_direction), i.triangle.get().normal));
-    res /= (4 * PI * sq(glm::length(light_direction))); // todo should be squared?
+    res /= (4 * PI * glm::pow(glm::length(light_direction), 2.0f));
     return light_color * res;
 }
 
@@ -153,12 +149,6 @@ vec3 indirect_light(const Intersection & i, const int depth = 0) {
 vec3 diffuse_bounce(const vec3 & normal) {
     return vec3(0,0,0);
 }
-
-/*
-(a,b).(x,y)
-ax + by > 0
-x²+y²=1
-*/
 
 const vec3 BACKGROUND_COLOR{0,0,0};
 const int MAX_BOUNCES = 1;
@@ -308,9 +298,11 @@ int main(int argc, char* argv[]) {
     const int t_0 = SDL_GetTicks();
     t = t_0;
 
+    BUFFER buffer;
+
     while (NoQuitMessageSDL()) {
         update();
-        draw();
+        draw(buffer);
         frames++;
     }
 

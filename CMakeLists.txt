@@ -3,6 +3,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(MLT)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(MLT main.cpp)
 target_compile_options(MLT PUBLIC -std=c++17 -O3)
 
