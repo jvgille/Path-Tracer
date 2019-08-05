@@ -12,6 +12,8 @@
 
 using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
+using glm::sin, glm::cos, glm::tan, glm::asin, glm::acos, glm::atan;
+using glm::dot, glm::length, glm::normalize, glm::determinant;
 
 const double PI = 3.14159265;
 const double EPSILON = 0.00001;
@@ -53,6 +55,10 @@ BUFFER new_buffer() {
     return vector<vector<vec3>>(SCREEN_WIDTH, vector<vec3>(SCREEN_HEIGHT, vec3()));
 }
 
+void print_vec(const vec3 & v) {
+    printf("(%f,%f,%f)\n", v.x, v.y, v.z);
+}
+
 double luminance(const dvec3 & v) {
     return (0.299*v.x+ 0.587*v.y+ 0.114*v.z);
 }
@@ -66,7 +72,7 @@ int random_int(int min, int max) {
 }
 
 vec3 get_ray_direction_by_pixel(int u, int v) {
-    return glm::normalize(camera.rot_matrix*vec3(u-SCREEN_WIDTH/2,
+    return normalize(camera.rot_matrix*vec3(u-SCREEN_WIDTH/2,
                                                  v-SCREEN_HEIGHT/2,
                                                  camera.focal_length));
 }
@@ -85,25 +91,25 @@ optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir, const Triangle &
     vec3 e2 = triangle.v2 - triangle.v0;
 
     mat3 A(-ray_dir, e1, e2);
-    float det_A = glm::determinant(A);
+    float det_A = determinant(A);
     if (-EPSILON < det_A && det_A < EPSILON)
         return optional<Intersection>();
 
     vec3 b = ray_start - triangle.v0;
-    float u = glm::determinant(mat3(-ray_dir, b, e2))/det_A;
+    float u = determinant(mat3(-ray_dir, b, e2))/det_A;
     if (u < -EPSILON || u >= 1)
         return optional<Intersection>();
 
-    float v = glm::determinant(mat3(-ray_dir, e1, b))/det_A;
+    float v = determinant(mat3(-ray_dir, e1, b))/det_A;
     if (v < -EPSILON || u+v >= 1)
         return optional<Intersection>();
 
-    float t = glm::determinant(mat3(b, e1, e2))/det_A;
+    float t = determinant(mat3(b, e1, e2))/det_A;
     if (t < EPSILON)
         return optional<Intersection>();
 
     vec3 intersection_point = ray_start + t*ray_dir;
-    float distance = glm::length(t*ray_dir);
+    float distance = length(t*ray_dir);
 
     return optional<Intersection>(Intersection{intersection_point, distance, triangle});
 }
@@ -121,21 +127,6 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir,
     return closest;
 }
 
-vec3 direct_light(const Intersection & i) {
-    vec3 light_direction = light_pos - i.point;
-
-    optional<Intersection> shadow = closest_intersection(light_pos, -light_direction, triangles);
-    if (shadow && shadow->distance < glm::length(light_direction) - EPSILON) {
-        return vec3(0,0,0);
-    }
-
-    float res = glm::max(0.0f, glm::dot(glm::normalize(light_direction), i.triangle.get().normal));
-    res /= (4 * PI * glm::pow(glm::length(light_direction), 2.0f));
-    return light_color * res;
-}
-
-using glm::sin, glm::cos, glm::tan, glm::asin, glm::acos, glm::atan;
-
 vec3 diffuse_bounce(const vec3 & normal) {
     float u = random_real(0, 1);
     float v = random_real(0, 1);
@@ -148,7 +139,7 @@ vec3 diffuse_bounce(const vec3 & normal) {
     float z = cos(phi);
     vec3 direction(x, y, z);
 
-    if (glm::dot(direction, normal) < 0) {
+    if (dot(direction, normal) < 0) {
         // if dir is not in normal's hemisphere, flip it
         direction *= -1;
     }
@@ -156,17 +147,15 @@ vec3 diffuse_bounce(const vec3 & normal) {
     return direction;
 }
 
-const vec3 BACKGROUND_COLOR{1,1,1};
-const uint MAX_DEPTH = 3;
-
-void print_vec(const vec3 & v) {
-    printf("(%f,%f,%f)\n", v.x, v.y, v.z);
-}
+const vec3 BACKGROUND_COLOR{2,2,2};
+const uint MAX_DEPTH = 5;
 
 uint num_max_depth = 0;
 uint num_background = 0;
 
 vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
+    // russian roulette, importance sampling
+    // emissive materials, other brdf:s
     if (depth >= MAX_DEPTH) {
         num_max_depth++;
         return vec3{0,0,0};
@@ -178,8 +167,8 @@ vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
         dir = diffuse_bounce(t.normal);
         origin = intersection->point;
 
-        // EmittedLight + 2 * RecursiveLight * Dot(Normal, RandomHemisphereAngle) * SurfaceDiffuseColor.
-        return 2.0f * trace_ray(origin, dir, depth+1) * glm::dot(dir, t.normal) * t.color;
+        // EmittedLight + 2 * RecursiveLight * Dot(Normal, RandomHemisphereAngle) * SurfaceDiffuseColor
+        return 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.color;
     } else {
         return BACKGROUND_COLOR;
     }
@@ -190,10 +179,11 @@ void trace_rays(BUFFER & buffer) {
         for (int v = 0; v < buffer[u].size(); v++) {
             vec3 dir = get_ray_direction_by_pixel(u, v);
             vec3 color = trace_ray(camera.pos, dir);
-            buffer[u][v] += color; // todo weighted accumulation of samples
+            buffer[u][v] += color;
         }
     }
     TOTAL_SAMPLES++;
+    cerr << TOTAL_SAMPLES << endl;
 }
 
 void draw(const BUFFER & buffer) {
@@ -303,7 +293,7 @@ void update(BUFFER & buffer) {
         // trace rays
         trace_rays(buffer);
     } else {
-        // nothing to do
+        // nothing to do - todo sleep?
     }
 }
 
