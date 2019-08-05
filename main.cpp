@@ -45,9 +45,12 @@ struct Intersection {
 
 #include "raster.hpp"
 
-template <class T>
-void print(const T & v) {
-    cerr << "(" << v.x << "," << v.y << "," << v.z << ")" << endl;
+typedef vector<vector<vec3>> BUFFER;
+uint TOTAL_SAMPLES;
+
+BUFFER new_buffer() {
+    TOTAL_SAMPLES = 0;
+    return vector<vector<vec3>>(SCREEN_WIDTH, vector<vec3>(SCREEN_HEIGHT, vec3()));
 }
 
 double luminance(const dvec3 & v) {
@@ -96,7 +99,7 @@ optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir, const Triangle &
         return optional<Intersection>();
 
     float t = glm::determinant(mat3(b, e1, e2))/det_A;
-    if (t < -EPSILON)
+    if (t < EPSILON)
         return optional<Intersection>();
 
     vec3 intersection_point = ray_start + t*ray_dir;
@@ -131,47 +134,67 @@ vec3 direct_light(const Intersection & i) {
     return light_color * res;
 }
 
-const int MAX_DEPTH = 1;
-
-vec3 indirect_light(const Intersection & i, const int depth = 0) {
-    if (depth >= MAX_DEPTH) {
-        return vec3(0,0,0);
-    }
-    vec3 dir = i.triangle.get().normal; // todo model perfectly diffuse
-    vec3 color{0,0,0};
-    if (auto res = closest_intersection(i.point, dir, triangles)) {
-        color = res->triangle.get().color * (direct_light(*res) + indirect_light(*res, depth+1));
-    }
-
-    return color;
-}
+using glm::sin, glm::cos, glm::tan, glm::asin, glm::acos, glm::atan;
 
 vec3 diffuse_bounce(const vec3 & normal) {
-    return vec3(0,0,0);
+    float u = random_real(0, 1);
+    float v = random_real(0, 1);
+    float theta = 2*PI*u;
+    float phi = acos(2*v-1); // to sample on sphere
+    //float phi = acos(v); // to sample on hemisphere?
+
+    float x = cos(theta) * sin(phi);
+    float y = sin(theta) * sin(phi);
+    float z = cos(phi);
+    vec3 direction(x, y, z);
+
+    if (glm::dot(direction, normal) < 0) {
+        // if dir is not in normal's hemisphere, flip it
+        direction *= -1;
+    }
+
+    return direction;
 }
 
-const vec3 BACKGROUND_COLOR{0,0,0};
-const int MAX_BOUNCES = 1;
+const vec3 BACKGROUND_COLOR{1,1,1};
+const uint MAX_DEPTH = 3;
 
-vec3 trace_ray(vec3 origin, vec3 dir) {
-    vec3 color{1,1,1};
+void print_vec(const vec3 & v) {
+    printf("(%f,%f,%f)\n", v.x, v.y, v.z);
+}
 
-    for (uint i = 0; i < MAX_BOUNCES; i++) {
-        if (auto res = closest_intersection(origin, dir, triangles)) {
-            color *= res->triangle.get().color;
-            origin = res->point;
-            dir = res->triangle.get().normal;
-            if (i+1 >= MAX_BOUNCES) {
-                color *= direct_light(*res);
-                return color;
-            }
-        } else {
-            return color * BACKGROUND_COLOR;
-        }
+uint num_max_depth = 0;
+uint num_background = 0;
+
+vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
+    if (depth >= MAX_DEPTH) {
+        num_max_depth++;
+        return vec3{0,0,0};
+    }
+
+    if (auto intersection = closest_intersection(origin, dir, triangles)) {
+        const Triangle & t = intersection->triangle.get();
+
+        dir = diffuse_bounce(t.normal);
+        origin = intersection->point;
+
+        // EmittedLight + 2 * RecursiveLight * Dot(Normal, RandomHemisphereAngle) * SurfaceDiffuseColor.
+        return 2.0f * trace_ray(origin, dir, depth+1) * glm::dot(dir, t.normal) * t.color;
+    } else {
+        return BACKGROUND_COLOR;
     }
 }
 
-typedef vector<vector<vec3>> BUFFER;
+void trace_rays(BUFFER & buffer) {
+    for (int u = 0; u < buffer.size(); u++) {
+        for (int v = 0; v < buffer[u].size(); v++) {
+            vec3 dir = get_ray_direction_by_pixel(u, v);
+            vec3 color = trace_ray(camera.pos, dir);
+            buffer[u][v] += color; // todo weighted accumulation of samples
+        }
+    }
+    TOTAL_SAMPLES++;
+}
 
 void draw(const BUFFER & buffer) {
     SDL_FillRect(screen, 0, 0);
@@ -181,14 +204,7 @@ void draw(const BUFFER & buffer) {
     if (TRACE_RAYS) {
         for (int u = 0; u < buffer.size(); u++) {
             for (int v = 0; v < buffer[u].size(); v++) {
-                //vec3 dir = get_ray_direction_by_pixel(u, v);
-                /* vec3 color{0,0,0};
-                if (auto res = closest_intersection(camera.pos, dir, triangles)) {
-                    color = res->triangle.get().color * (direct_light(*res) + indirect_light(*res));
-                } */
-                //vec3 color = trace_ray(camera.pos, dir);
-
-                PutPixelSDL(screen, u, v, buffer[u][v]);
+                PutPixelSDL(screen, u, v, buffer[u][v]/float(TOTAL_SAMPLES));
             }
         }
     } else {
@@ -272,7 +288,7 @@ bool handle_input(const float dt) {
            old_light_pos != light_pos;
 }
 
-void update() {
+void update(BUFFER & buffer) {
     int t2 = SDL_GetTicks();
     float dt = float(t2 - t);
     t = t2;
@@ -281,9 +297,11 @@ void update() {
 
     if (TRACE_RAYS) {
         if (state_changed) {
-            // reset BUFFER
+            // clear buffer if camera moved
+            buffer = new_buffer();
         }
         // trace rays
+        trace_rays(buffer);
     } else {
         // nothing to do
     }
@@ -298,10 +316,10 @@ int main(int argc, char* argv[]) {
     const int t_0 = SDL_GetTicks();
     t = t_0;
 
-    BUFFER buffer;
+    BUFFER buffer = new_buffer();
 
     while (NoQuitMessageSDL()) {
-        update();
+        update(buffer);
         draw(buffer);
         frames++;
     }
