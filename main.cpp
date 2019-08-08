@@ -10,8 +10,8 @@
 #include <glm/gtc/constants.hpp> // PI
 #include <SDL.h>
 #include "../SDLauxiliary.h"
-#include "../TestModel.h"
 
+#include "triangle.hpp"
 #include "camera.hpp"
 
 using namespace std;
@@ -23,8 +23,6 @@ const int SCREEN_HEIGHT = 300;
 
 bool TRACE_RAYS = true;
 
-SDL_Surface* screen;
-int t;
 vector<Triangle> triangles;
 
 vec3 light_pos(0,0,-1.5);
@@ -131,19 +129,25 @@ vec3 sample_hemisphere(const vec3 & normal) {
     return direction;
 }
 
-const vec3 BACKGROUND_COLOR{2,2,2};
+const vec3 BACKGROUND_COLOR{0,0,0};
 const uint MAX_DEPTH = 5;
 
-uint num_max_depth = 0;
-uint num_background = 0;
+/*
+point light
+what part of this is lambertian?
+ - lambert = dot(dir, t.normal) * t.color ?
+emissive materials
+importance sampling
+other brdfs
+ - mirror, metallic (cosine weighted around reflection?)
+
+russian roulette https://computergraphics.stackexchange.com/questions/2316/is-russian-roulette-really-the-answer
+how for recursive?
+*/
 
 vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
-    // russian roulette, importance sampling
-    // emissive materials, other brdf:s
-    if (depth >= MAX_DEPTH) {
-        num_max_depth++;
+    if (depth >= MAX_DEPTH)
         return vec3{0,0,0};
-    }
 
     if (auto intersection = closest_intersection(origin, dir, triangles)) {
         const Triangle & t = intersection->triangle.get();
@@ -152,7 +156,8 @@ vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
         origin = intersection->point;
 
         // EmittedLight + 2 * RecursiveLight * Dot(Normal, RandomHemisphereAngle) * SurfaceDiffuseColor
-        return 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.color;
+        //return 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.color;
+        return t.material.emittance + 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.material.color;
     } else {
         return BACKGROUND_COLOR;
     }
@@ -186,7 +191,7 @@ vec3 median_filter(const BUFFER & buffer, int u, int v) {
 
 bool MEDIAN_FILTER = false;
 
-void draw(const Camera & camera, const BUFFER & buffer) {
+void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
     SDL_FillRect(screen, 0, 0);
     if (SDL_MUSTLOCK(screen))
         SDL_LockSurface(screen);
@@ -204,7 +209,7 @@ void draw(const Camera & camera, const BUFFER & buffer) {
     } else {
         for (uint i = 0; i < triangles.size(); i++) {
             vector<vec3> vertices = {triangles[i].v0, triangles[i].v1, triangles[i].v2};
-            draw_polygon_edges(camera, vertices);
+            draw_polygon_edges(screen, camera, vertices);
         }
     }
 
@@ -214,11 +219,6 @@ void draw(const Camera & camera, const BUFFER & buffer) {
     SDL_UpdateRect(screen, 0, 0, 0, 0);
 }
 
-/*
-return true if camera state has changed
-todo take camera etc as arg
-todo encapsulate state?
-*/
 bool handle_input(Camera & camera, const float dt) {
     const float MOVE_SPEED = 1 * dt/1000;
     const float ROT_SPEED = 1 * dt/1000;
@@ -277,7 +277,7 @@ bool handle_input(Camera & camera, const float dt) {
         return TRACE_RAYS;
 }
 
-void update(Camera & camera, BUFFER & buffer) {
+int update(Camera & camera, BUFFER & buffer, int t) {
     int t2 = SDL_GetTicks();
     float dt = float(t2 - t);
     t = t2;
@@ -297,10 +297,14 @@ void update(Camera & camera, BUFFER & buffer) {
         trace_rays(camera, buffer);
     } else {
         // nothing to do - todo sleep to get 60 hz?
+        // should sleep after drawing tho
     }
+
+    return t;
 }
 
-void log() {
+void log(SDL_Surface * screen) {
+    // TODO add timing option - quit after logging etc
     if (TRACE_RAYS) {
         if (TOTAL_SAMPLES % 10 == 0)
             cerr << TOTAL_SAMPLES << endl;
@@ -321,21 +325,21 @@ int main(int argc, char* argv[]) {
         LOGGING.SAVE_IMAGE = true;
     }
 
-    screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
+    SDL_Surface * screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     Camera camera(vec3(0,0,20*glm::epsilon<float>()-3), vec2(3*glm::epsilon<float>(), 2*glm::epsilon<float>()), SCREEN_HEIGHT);
 
-    LoadTestModel(triangles);
+    triangles = load_cornell();
 
     const int t_0 = SDL_GetTicks();
-    t = t_0;
+    int time = t_0;
 
     BUFFER buffer = new_buffer();
 
     while (NoQuitMessageSDL()) {
-        update(camera, buffer);
-        draw(camera, buffer);
-        log();
+        time = update(camera, buffer, time);
+        draw(screen, camera, buffer);
+        log(screen);
     }
 
     float dt = SDL_GetTicks() - t_0;

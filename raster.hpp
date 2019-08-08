@@ -21,7 +21,7 @@ vec2 vertex_shader(const Camera & camera, const vec3 & v) {
     return p;
 }
 
-void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
+void draw_line(SDL_Surface * screen, const vec2 & a, const vec2 & b, const vec3 & color) {
     if (!on_screen(a) || !on_screen(b)) {
         return;
     }
@@ -35,7 +35,8 @@ void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
     }
 }
 
-void draw_polygon_edges(const Camera & camera, const vector<vec3> & vertices, const vec3 & color = vec3(1,1,1)) {
+void draw_polygon_edges(SDL_Surface * screen, const Camera & camera,
+                        const vector<vec3> & vertices, const vec3 & color = vec3(1,1,1)) {
     // todo draws lines behind camera
     vector<vec2> projected_vertices;
     for (const vec3 & v : vertices) {
@@ -43,7 +44,7 @@ void draw_polygon_edges(const Camera & camera, const vector<vec3> & vertices, co
     }
     for (uint i = 0; i < vertices.size(); i++) {
         int j = (i + 1) % vertices.size();
-        draw_line(projected_vertices[i], projected_vertices[j], color);
+        draw_line(screen, projected_vertices[i], projected_vertices[j], color);
     }
 }
 
