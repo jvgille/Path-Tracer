@@ -13,11 +13,11 @@ vector<T> interpolate(const T & a, const T & b, const uint steps) {
     return res;
 }
 
-vec2 vertex_shader(const vec3 & v) {
+vec2 vertex_shader(const Camera & camera, const vec3 & v) {
     vec2 p;
-    vec3 pos = (v - camera.pos) * camera.rot_matrix;
-    p.x = camera.focal_length * pos.x/pos.z + SCREEN_WIDTH/2;
-    p.y = camera.focal_length * pos.y/pos.z + SCREEN_HEIGHT/2;
+    vec3 pos = (v - camera.get_position()) * camera.get_rotation_matrix();
+    p.x = camera.get_focal_length() * pos.x/pos.z + SCREEN_WIDTH/2;
+    p.y = camera.get_focal_length() * pos.y/pos.z + SCREEN_HEIGHT/2;
     return p;
 }
 
@@ -35,11 +35,11 @@ void draw_line(const vec2 & a, const vec2 & b, const vec3 & color) {
     }
 }
 
-void draw_polygon_edges(const vector<vec3> & vertices, const vec3 & color = vec3(1,1,1)) {
+void draw_polygon_edges(const Camera & camera, const vector<vec3> & vertices, const vec3 & color = vec3(1,1,1)) {
     // todo draws lines behind camera
     vector<vec2> projected_vertices;
     for (const vec3 & v : vertices) {
-        projected_vertices.push_back(vertex_shader(v));
+        projected_vertices.push_back(vertex_shader(camera, v));
     }
     for (uint i = 0; i < vertices.size(); i++) {
         int j = (i + 1) % vertices.size();
