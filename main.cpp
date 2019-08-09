@@ -311,7 +311,7 @@ bool log(SDL_Surface * screen) {
             cerr << TOTAL_SAMPLES << endl;
         if (TOTAL_SAMPLES >= LOGGING.next_target) {
             if (LOGGING.save_image) {
-                string path = "images/";
+                string path = "../images/";
                 path += to_string(TOTAL_SAMPLES);
                 path += ".bmp";
                 SDL_SaveBMP(screen, path.c_str());
