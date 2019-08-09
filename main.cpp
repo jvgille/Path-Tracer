@@ -149,20 +149,26 @@ russian roulette https://computergraphics.stackexchange.com/questions/2316/is-ru
 how for recursive?
 */
 
-vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
-    if (depth >= MAX_DEPTH)
-        return vec3{0,0,0};
+// todo remove warning about register
 
-    if (auto intersection = closest_intersection(origin, dir, triangles)) {
-        const Triangle & t = intersection->triangle.get();
+vec3 trace_ray(vec3 origin, vec3 dir) {
+    vec3 color(0,0,0);
+    vec3 throughput(1,1,1);
+    for (uint depth = 0; depth < MAX_DEPTH; depth++) {
+        if (auto intersection = closest_intersection(origin, dir, triangles)) {
+            const Triangle & t = intersection->triangle.get();
 
-        dir = sample_hemisphere(t.normal);
-        origin = intersection->point;
+            dir = sample_hemisphere(t.normal);
+            origin = intersection->point;
 
-        return t.material.emittance + 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.material.color;
-    } else {
-        return BACKGROUND_COLOR;
+            color += t.material.emittance * throughput;
+            throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
+        } else {
+            color += BACKGROUND_COLOR * throughput;
+            break;
+        }
     }
+    return color;
 }
 
 void trace_rays(Camera & camera, BUFFER & buffer) {
