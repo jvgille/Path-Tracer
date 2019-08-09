@@ -37,6 +37,7 @@ std::vector<Triangle> load_cornell() {
 	using namespace Materials;
 
     std::vector<Triangle> triangles;
+	triangles.reserve(5*2*3); // 3 cubes with 5 faces and 2 triangles per face
 
 	// Room
 	float L = 555;			// Length of Cornell Box side.
@@ -161,13 +162,6 @@ std::vector<Triangle> load_cornell() {
 
 		triangles[i].recompute_normal();
 	}
-
-	/* E = vec3( 0.2, -0.95,-0.2);
-	F = vec3(-0.2, -0.95,-0.2);
-	G = vec3( 0.2, -0.95, 0.2);
-	H = vec3(-0.2, -0.95, 0.2);
-	triangles.push_back(Triangle(E, F, G, lamp));
-	triangles.push_back(Triangle(F, H, G, lamp)); */
 
     return triangles;
 }

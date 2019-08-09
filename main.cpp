@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <string>
+#include <set>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp> // PI
@@ -18,6 +19,8 @@ using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 using glm::dot, glm::length, glm::normalize, glm::determinant;
 
+const double EPSILON = 0.00001;
+
 const int SCREEN_WIDTH = 300;
 const int SCREEN_HEIGHT = 300;
 
@@ -29,8 +32,9 @@ vec3 light_pos(0,0,-1.5);
 vec3 light_color = 10.0f * vec3(1, 1, 1);
 
 struct {
-    bool SAVE_IMAGE = false;
-    uint NEXT_TARGET = 100;
+    bool save_image = false;
+    bool exit = false;
+    uint next_target = 100;
 } LOGGING;
 
 struct Intersection {
@@ -77,20 +81,20 @@ optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir, const Triangle &
 
     mat3 A(-ray_dir, e1, e2);
     float det_A = determinant(A);
-    if (-glm::epsilon<float>() < det_A && det_A < glm::epsilon<float>())
+    if (-EPSILON < det_A && det_A < EPSILON)
         return optional<Intersection>();
 
     vec3 b = ray_start - triangle.v0;
     float u = determinant(mat3(-ray_dir, b, e2))/det_A;
-    if (u < -glm::epsilon<float>() || u >= 1)
+    if (u < -EPSILON || u >= 1)
         return optional<Intersection>();
 
     float v = determinant(mat3(-ray_dir, e1, b))/det_A;
-    if (v < -glm::epsilon<float>() || u+v >= 1)
+    if (v < -EPSILON || u+v >= 1)
         return optional<Intersection>();
 
     float t = determinant(mat3(b, e1, e2))/det_A;
-    if (t < glm::epsilon<float>())
+    if (t < EPSILON)
         return optional<Intersection>();
 
     vec3 intersection_point = ray_start + t*ray_dir;
@@ -155,8 +159,6 @@ vec3 trace_ray(vec3 origin, vec3 dir, uint depth = 0) {
         dir = sample_hemisphere(t.normal);
         origin = intersection->point;
 
-        // EmittedLight + 2 * RecursiveLight * Dot(Normal, RandomHemisphereAngle) * SurfaceDiffuseColor
-        //return 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.color;
         return t.material.emittance + 2.0f * trace_ray(origin, dir, depth+1) * dot(dir, t.normal) * t.material.color;
     } else {
         return BACKGROUND_COLOR;
@@ -263,10 +265,10 @@ bool handle_input(Camera & camera, const float dt) {
     }
     if (keystate[SDLK_5]) {
         cerr << "image saving enabled" << endl;
-        LOGGING.SAVE_IMAGE = true;
+        LOGGING.save_image = true;
     } else if (keystate[SDLK_6]) {
         cerr << "image saving disabled" << endl;
-        LOGGING.SAVE_IMAGE = false;
+        LOGGING.save_image = false;
     }
 
     if (keystate[SDLK_1])
@@ -303,31 +305,45 @@ int update(Camera & camera, BUFFER & buffer, int t) {
     return t;
 }
 
-void log(SDL_Surface * screen) {
-    // TODO add timing option - quit after logging etc
+bool log(SDL_Surface * screen) {
     if (TRACE_RAYS) {
         if (TOTAL_SAMPLES % 10 == 0)
             cerr << TOTAL_SAMPLES << endl;
-        if (LOGGING.SAVE_IMAGE && TOTAL_SAMPLES >= LOGGING.NEXT_TARGET) {
-            string path = "images/";
-            path += to_string(TOTAL_SAMPLES);
-            path += ".bmp";
-            SDL_SaveBMP(screen, path.c_str());
-            cerr << "saved image to " << path << endl;
-            LOGGING.NEXT_TARGET *= 2;
+        if (TOTAL_SAMPLES >= LOGGING.next_target) {
+            if (LOGGING.save_image) {
+                string path = "images/";
+                path += to_string(TOTAL_SAMPLES);
+                path += ".bmp";
+                SDL_SaveBMP(screen, path.c_str());
+                cerr << "saved image to " << path << endl;
+                LOGGING.next_target *= 2;
+            }
+            if (LOGGING.exit) {
+                return false;
+            }
         }
     }
+    return true;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc > 1 && string(argv[1]) == "-log") {
+    std::set<string> args;
+    for (int i = 1; i < argc; i++) {
+        args.insert(argv[i]);
+    }
+    if (args.count("-log")) {
         cerr << "image saving enabled" << endl;
-        LOGGING.SAVE_IMAGE = true;
+        LOGGING.save_image = true;
+    }
+    if (args.count("-exit")) {
+        cerr << "will exit at " << LOGGING.next_target << endl;
+        LOGGING.exit = true;
     }
 
     SDL_Surface * screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    Camera camera(vec3(0,0,20*glm::epsilon<float>()-3), vec2(3*glm::epsilon<float>(), 2*glm::epsilon<float>()), SCREEN_HEIGHT);
+    // slightly offset to avoid alignment lightning bugs
+    Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
 
     triangles = load_cornell();
 
@@ -336,10 +352,11 @@ int main(int argc, char* argv[]) {
 
     BUFFER buffer = new_buffer();
 
-    while (NoQuitMessageSDL()) {
+    bool should_continue = true;
+    while (NoQuitMessageSDL() && should_continue) {
         time = update(camera, buffer, time);
         draw(screen, camera, buffer);
-        log(screen);
+        should_continue = log(screen);
     }
 
     float dt = SDL_GetTicks() - t_0;
