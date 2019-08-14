@@ -134,13 +134,12 @@ vec3 sample_hemisphere(const vec3 & normal) {
 }
 
 const vec3 BACKGROUND_COLOR{0,0,0};
-const uint MAX_DEPTH = 5;
 
 /*
 what part of this is lambertian?
  - lambert = dot(dir, t.normal) * t.color ?
-emissive materials
 importance sampling
+more surfaces - spheres and quads
 other brdfs
  - mirror, metallic (cosine weighted around reflection?)
 
@@ -154,11 +153,20 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
         if (auto intersection = closest_intersection(origin, dir, triangles)) {
             const Triangle & t = intersection->triangle.get();
 
-            dir = sample_hemisphere(t.normal);
+            //dir = sample_hemisphere(t.normal);
+            if (t.material.is_mirror)
+                dir = Materials::mirror.sample_pdf(t.normal, dir);
+            else
+                dir = sample_hemisphere(t.normal);
+
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-            throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
+            //throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
+            if (t.material.is_mirror)
+                throughput *= dot(dir, t.normal) * t.material.color;
+            else
+                throughput *= 2*dot(dir, t.normal) * t.material.color;
 
             // russian roulette
             float p = luminance(throughput);

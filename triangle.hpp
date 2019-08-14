@@ -64,8 +64,7 @@ std::vector<Triangle> load_cornell() {
 	triangles.push_back( Triangle( F, B, D, yellow ) );
 	triangles.push_back( Triangle( H, F, D, yellow ) );
 
-	// Ceiling
-	// TODO changed material
+	// Ceiling - used to be cyan
 	triangles.push_back( Triangle( E, F, G, lamp ) );
 	triangles.push_back( Triangle( F, H, G, lamp ) );
 
@@ -74,7 +73,7 @@ std::vector<Triangle> load_cornell() {
 	triangles.push_back( Triangle( G, H, D, white ) );
 
 
-	// Short block
+	// Short block - used to be red
 
 	A = vec3(290,0,114);
 	B = vec3(130,0, 65);
@@ -87,24 +86,24 @@ std::vector<Triangle> load_cornell() {
 	H = vec3( 82,165,225);
 
 	// Front
-	triangles.push_back( Triangle(E,B,A,red) );
-	triangles.push_back( Triangle(E,F,B,red) );
+	triangles.push_back( Triangle(E,B,A,mirror_2) );
+	triangles.push_back( Triangle(E,F,B,mirror_2) );
 
 	// Front
-	triangles.push_back( Triangle(F,D,B,red) );
-	triangles.push_back( Triangle(F,H,D,red) );
+	triangles.push_back( Triangle(F,D,B,mirror_2) );
+	triangles.push_back( Triangle(F,H,D,mirror_2) );
 
 	// BACK
-	triangles.push_back( Triangle(H,C,D,red) );
-	triangles.push_back( Triangle(H,G,C,red) );
+	triangles.push_back( Triangle(H,C,D,mirror_2) );
+	triangles.push_back( Triangle(H,G,C,mirror_2) );
 
 	// LEFT
-	triangles.push_back( Triangle(G,E,C,red) );
-	triangles.push_back( Triangle(E,A,C,red) );
+	triangles.push_back( Triangle(G,E,C,mirror_2) );
+	triangles.push_back( Triangle(E,A,C,mirror_2) );
 
 	// TOP
-	triangles.push_back( Triangle(G,F,E,red) );
-	triangles.push_back( Triangle(G,H,F,red) );
+	triangles.push_back( Triangle(G,F,E,mirror_2) );
+	triangles.push_back( Triangle(G,H,F,mirror_2) );
 
 	// ---------------------------------------------------------------------------
 	// Tall block
