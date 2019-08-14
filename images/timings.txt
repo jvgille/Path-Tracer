@@ -1,5 +1,10 @@
-v0_ceiling	37.183
-v0_skybox	37.778
 
 v1, iterative
-v1_ceiling	32.385
+ceiling		32.385
+
+v4, luminance roulette, no cap
+ceiling		14,651
+ceiling 200	31,730
+
+
+

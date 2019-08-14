@@ -6,7 +6,7 @@ project(MLT)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(MLT main.cpp)
-target_compile_options(MLT PUBLIC -std=c++17 -O3)
+target_compile_options(MLT PUBLIC -std=c++17 -O3 -Wno-register)
 
 find_package(SDL)
 

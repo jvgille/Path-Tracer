@@ -57,8 +57,8 @@ void print_vec(const vec3 & v) {
     printf("(%f,%f,%f)\n", v.x, v.y, v.z);
 }
 
-double luminance(const dvec3 & v) {
-    return (0.299*v.x+ 0.587*v.y+ 0.114*v.z);
+float luminance(const vec3 & v) {
+    return (0.299*v.x + 0.587*v.y + 0.114*v.z);
 }
 
 double random_real(double min, double max) {
@@ -137,7 +137,6 @@ const vec3 BACKGROUND_COLOR{0,0,0};
 const uint MAX_DEPTH = 5;
 
 /*
-point light
 what part of this is lambertian?
  - lambert = dot(dir, t.normal) * t.color ?
 emissive materials
@@ -145,16 +144,13 @@ importance sampling
 other brdfs
  - mirror, metallic (cosine weighted around reflection?)
 
-russian roulette https://computergraphics.stackexchange.com/questions/2316/is-russian-roulette-really-the-answer
-how for recursive?
+point light, bidirectional
 */
-
-// todo remove warning about register
 
 vec3 trace_ray(vec3 origin, vec3 dir) {
     vec3 color(0,0,0);
     vec3 throughput(1,1,1);
-    for (uint depth = 0; depth < MAX_DEPTH; depth++) {
+    while(true) {
         if (auto intersection = closest_intersection(origin, dir, triangles)) {
             const Triangle & t = intersection->triangle.get();
 
@@ -163,6 +159,14 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
 
             color += t.material.emittance * throughput;
             throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
+
+            // russian roulette
+            float p = luminance(throughput);
+            if (random_real(0,1) > p) {
+                break;
+            }
+            // add the lost energy
+            throughput *= 1/p;
         } else {
             color += BACKGROUND_COLOR * throughput;
             break;
@@ -192,7 +196,7 @@ vec3 median_filter(const BUFFER & buffer, int u, int v) {
             }
         }
     }
-    auto comp = [](const vec3 & a, const vec3 & b) { return luminance(dvec3(a)) < luminance(dvec3(b));};
+    auto comp = [](const vec3 & a, const vec3 & b) { return luminance(a) < luminance(b);};
     sort(temp.begin(), temp.end(), comp);
     return temp[temp.size()/2];
 }
