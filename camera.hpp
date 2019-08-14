@@ -66,11 +66,11 @@ class Camera {
         if (dirty) {
             dirty = false;
             update_rotation_matrix();
-            rot.y = glm::clamp(rot.y, -glm::half_pi<float>(), glm::half_pi<float>());
-            while (rot.x > glm::two_pi<float>())
-                rot.x -= glm::two_pi<float>();
-            while (rot.x < 0)
-                rot.x += glm::two_pi<float>();
+            rot.x = glm::clamp(rot.x, -glm::half_pi<float>(), glm::half_pi<float>());
+            while (rot.y > glm::two_pi<float>())
+                rot.y -= glm::two_pi<float>();
+            while (rot.y < 0)
+                rot.y += glm::two_pi<float>();
             return true;
         } else {
             return false;

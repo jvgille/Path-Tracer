@@ -29,6 +29,27 @@ class Triangle {
 	}
 };
 
+std::vector<Triangle> load_test() {
+	using namespace Materials;
+	std::vector<Triangle> triangles;
+
+	vec3 A(-1, 1,-1);
+	vec3 B( 1, 1,-1);
+	vec3 C(-1, 1, 1);
+	vec3 D( 1, 1, 1);
+	vec3 E(-1,-1,-1);
+	vec3 F( 1,-1,-1);
+	vec3 G(-1,-1, 1);
+	vec3 H( 1,-1, 1);
+
+	triangles.push_back(Triangle(A,E,C,pure_white));
+	triangles.push_back(Triangle(C,E,G,pure_white));
+	triangles.push_back(Triangle(F,B,D,lamp));
+	triangles.push_back(Triangle(H,F,D,lamp));
+
+	return triangles;
+}
+
 // Loads the Cornell Box. It is scaled to fill the volume:
 // -1 <= x <= +1
 // -1 <= y <= +1
@@ -69,12 +90,11 @@ std::vector<Triangle> load_cornell() {
 	triangles.push_back( Triangle( F, H, G, lamp ) );
 
 	// Back wall
-	triangles.push_back( Triangle( G, D, C, white ) );
-	triangles.push_back( Triangle( G, H, D, white ) );
+	triangles.push_back( Triangle( G, D, C, mirror ) ); 		// todo white
+	triangles.push_back( Triangle( G, H, D, mirror ) );
 
 
-	// Short block - used to be red
-
+	// Short block
 	A = vec3(290,0,114);
 	B = vec3(130,0, 65);
 	C = vec3(240,0,272);
@@ -86,24 +106,24 @@ std::vector<Triangle> load_cornell() {
 	H = vec3( 82,165,225);
 
 	// Front
-	triangles.push_back( Triangle(E,B,A,mirror_2) );
-	triangles.push_back( Triangle(E,F,B,mirror_2) );
+	triangles.push_back( Triangle(E,B,A,red) );
+	triangles.push_back( Triangle(E,F,B,red) );
 
 	// Front
-	triangles.push_back( Triangle(F,D,B,mirror_2) );
-	triangles.push_back( Triangle(F,H,D,mirror_2) );
+	triangles.push_back( Triangle(F,D,B,red) );
+	triangles.push_back( Triangle(F,H,D,red) );
 
 	// BACK
-	triangles.push_back( Triangle(H,C,D,mirror_2) );
-	triangles.push_back( Triangle(H,G,C,mirror_2) );
+	triangles.push_back( Triangle(H,C,D,red) );
+	triangles.push_back( Triangle(H,G,C,red) );
 
 	// LEFT
-	triangles.push_back( Triangle(G,E,C,mirror_2) );
-	triangles.push_back( Triangle(E,A,C,mirror_2) );
+	triangles.push_back( Triangle(G,E,C,red) );
+	triangles.push_back( Triangle(E,A,C,red) );
 
 	// TOP
-	triangles.push_back( Triangle(G,F,E,mirror_2) );
-	triangles.push_back( Triangle(G,H,F,mirror_2) );
+	triangles.push_back( Triangle(G,F,E,red) );
+	triangles.push_back( Triangle(G,H,F,red) );
 
 	// ---------------------------------------------------------------------------
 	// Tall block

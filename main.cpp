@@ -28,8 +28,7 @@ bool TRACE_RAYS = true;
 
 vector<Triangle> triangles;
 
-vec3 light_pos(0,0,-1.5);
-vec3 light_color = 10.0f * vec3(1, 1, 1);
+#include "raster.hpp"
 
 struct {
     bool save_image = false;
@@ -42,8 +41,6 @@ struct Intersection {
     float distance;
     reference_wrapper<const Triangle> triangle;
 };
-
-#include "raster.hpp"
 
 typedef vector<vector<vec3>> BUFFER;
 uint TOTAL_SAMPLES;
@@ -154,19 +151,29 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
             const Triangle & t = intersection->triangle.get();
 
             //dir = sample_hemisphere(t.normal);
-            if (t.material.is_mirror)
+            dir = t.material.sample_pdf(t.normal, dir);
+            /* if (t.material.is_mirror)
                 dir = Materials::mirror.sample_pdf(t.normal, dir);
             else
-                dir = sample_hemisphere(t.normal);
+                dir = sample_hemisphere(t.normal); */
 
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
             //throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
-            if (t.material.is_mirror)
+            /* if (t.material.is_mirror)
                 throughput *= dot(dir, t.normal) * t.material.color;
             else
-                throughput *= 2*dot(dir, t.normal) * t.material.color;
+                throughput *= 2*dot(dir, t.normal) * t.material.color; */
+
+            //throughput *= 2*dot(dir, t.normal) * t.material.color;
+
+            if(const Diffuse * d = dynamic_cast<const Diffuse*>(&t.material)) {
+                throughput *= 2.0f*dot(dir, t.normal) * t.material.color;
+            } else {
+                //throughput *= 1000.0f*dot(dir, t.normal) * t.material.color;
+                throughput *= vec3(1000);
+            }
 
             // russian roulette
             float p = luminance(throughput);
@@ -364,6 +371,7 @@ int main(int argc, char* argv[]) {
     Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
 
     triangles = load_cornell();
+    //triangles = load_test();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;
