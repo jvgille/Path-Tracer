@@ -113,32 +113,15 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir,
     return closest;
 }
 
-vec3 sample_hemisphere(const vec3 & normal) {
-    // sample point on unit sphere
-    float u = random_real(0, 1);
-    float v = random_real(0, 1);
-    float theta = glm::two_pi<float>()*u;
-    float phi = acos(2*v-1);
-
-    // convert spherical to cartesian
-    vec3 direction{cos(theta)*sin(phi), sin(theta)*sin(phi), cos(phi)};
-
-    // if dir is not in hemisphere around normal, flip it
-    if (dot(direction, normal) < 0) {
-        direction *= -1;
-    }
-    return direction;
-}
-
 const vec3 BACKGROUND_COLOR{0,0,0};
 
 /*
 what part of this is lambertian?
- - lambert = dot(dir, t.normal) * t.color ?
-importance sampling
+ - lambert = 2 * t.color ?
 more surfaces - spheres and quads
+importance sampling??
 other brdfs
- - mirror, metallic (cosine weighted around reflection?)
+ - metallic (cosine weighted around reflection?)
 
 point light, bidirectional
 */
@@ -150,43 +133,35 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
         if (auto intersection = closest_intersection(origin, dir, triangles)) {
             const Triangle & t = intersection->triangle.get();
 
-            //dir = sample_hemisphere(t.normal);
             dir = t.material.sample_pdf(t.normal, dir);
-            /* if (t.material.is_mirror)
-                dir = Materials::mirror.sample_pdf(t.normal, dir);
-            else
-                dir = sample_hemisphere(t.normal); */
 
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-            //throughput *= 2.0f * dot(dir, t.normal) * t.material.color;
-            /* if (t.material.is_mirror)
-                throughput *= dot(dir, t.normal) * t.material.color;
-            else
-                throughput *= 2*dot(dir, t.normal) * t.material.color; */
-
-            //throughput *= 2*dot(dir, t.normal) * t.material.color;
 
             if(const Diffuse * d = dynamic_cast<const Diffuse*>(&t.material)) {
-                throughput *= 2.0f*dot(dir, t.normal) * t.material.color;
+                throughput *= 2*dot(dir, t.normal) * t.material.color;
             } else {
-                //throughput *= 1000.0f*dot(dir, t.normal) * t.material.color;
-                throughput *= vec3(1000);
+                throughput *= dot(dir, t.normal) * t.material.color;
             }
 
             // russian roulette
             float p = luminance(throughput);
-            if (random_real(0,1) > p) {
-                break;
+            if (p < 1) {
+                if (random_real(0,1) > p) {
+                    break;
+                }
+                throughput *= 1/p; // add the lost energy
             }
-            // add the lost energy
-            throughput *= 1/p;
         } else {
             color += BACKGROUND_COLOR * throughput;
             break;
         }
     }
+    /* cerr << "--------" << endl;
+    print_vec(throughput);
+    print_vec(color); */
+
     return color;
 }
 
@@ -352,7 +327,7 @@ bool log(SDL_Surface * screen) {
 }
 
 int main(int argc, char* argv[]) {
-    std::set<string> args;
+    std::set<string> args; // todo do a for loop instead
     for (int i = 1; i < argc; i++) {
         args.insert(argv[i]);
     }

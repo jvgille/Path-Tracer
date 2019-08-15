@@ -6,5 +6,5 @@ v4, luminance roulette, no cap
 ceiling		14,651
 ceiling 200	31,730
 
-
-
+v5, fixed russian
+ceiling 200	26,940
