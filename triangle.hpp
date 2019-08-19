@@ -8,17 +8,26 @@
 
 using glm::vec3;
 
-class Triangle {
+class Surface {
+  public:
+    const Material & material;
+
+	Surface(const Material & material)
+	: material(material) { }
+
+	virtual vec3 get_normal(const vec3 & intersection_point) const = 0;
+};
+
+class Triangle : public Surface {
   public:
 	vec3 v0;
 	vec3 v1;
 	vec3 v2;
 	vec3 normal;
-    const Material & material;
 
 	Triangle(vec3 v0, vec3 v1, vec3 v2, const Material & material)
 	: v0(v0), v1(v1), v2(v2)
-    , material(material) {
+    , Surface(material) {
 		recompute_normal();
 	}
 
@@ -26,6 +35,24 @@ class Triangle {
  	   	vec3 e1 = v1-v0;
     	vec3 e2 = v2-v0;
     	normal = glm::normalize(glm::cross(e2, e1));
+	}
+
+	vec3 get_normal(const vec3 & _) const {
+		return normal;
+	}
+};
+
+class Sphere : public Surface {
+  public:
+	vec3 center;
+	float radius;
+
+	Sphere(vec3 center, float radius, const Material & material)
+	: center(center), radius(radius)
+    , Surface(material) { }
+
+	vec3 get_normal(const vec3 & intersection_point) const {
+		return glm::normalize(intersection_point-center);
 	}
 };
 
@@ -157,10 +184,6 @@ std::vector<Triangle> load_cornell() {
 	// TOP
 	triangles.push_back( Triangle(G,F,E,blue) );
 	triangles.push_back( Triangle(G,H,F,blue) );
-
-
-	// ----------------------------------------------
-	// scale to volume [-1,1]^3
 
 	for(size_t i=0; i<triangles.size(); i++) {
 		triangles[i].v0 *= 2/L;
