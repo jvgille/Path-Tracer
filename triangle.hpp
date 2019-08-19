@@ -88,122 +88,84 @@ std::vector<Triangle> load_cornell() {
 	triangles.reserve(5*2*3); // 3 cubes with 5 faces and 2 triangles per face
 
 	// Room
-	float L = 555;			// Length of Cornell Box side.
-
-	vec3 A(L,0,0);
-	vec3 B(0,0,0);
-	vec3 C(L,0,L);
-	vec3 D(0,0,L);
-
-	vec3 E(L,L,0);
-	vec3 F(0,L,0);
-	vec3 G(L,L,L);
-	vec3 H(0,L,L);
+	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
+	vec3 B = vec3(1.0f, 1.0f, -1.0f);
+	vec3 C = vec3(-1.0f, 1.0f, 1.0f);
+	vec3 D = vec3(1.0f, 1.0f, 1.0f);
+	vec3 E = vec3(-1.0f, -1.0f, -1.0f);
+	vec3 F = vec3(1.0f, -1.0f, -1.0f);
+	vec3 G = vec3(-1.0f, -1.0f, 1.0f);
+	vec3 H = vec3(1.0f, -1.0f, 1.0f);
 
 	// Floor:
 	triangles.push_back( Triangle( C, B, A, green ) );
 	triangles.push_back( Triangle( C, D, B, green ) );
-
 	// Left wall
 	triangles.push_back( Triangle( A, E, C, purple ) );
 	triangles.push_back( Triangle( C, E, G, purple ) );
-
 	// Right wall
 	triangles.push_back( Triangle( F, B, D, yellow ) );
 	triangles.push_back( Triangle( H, F, D, yellow ) );
-
 	// Ceiling - used to be cyan
 	triangles.push_back( Triangle( E, F, G, lamp ) );
 	triangles.push_back( Triangle( F, H, G, lamp ) );
-
 	// Back wall
-	triangles.push_back( Triangle( G, D, C, mirror ) ); 		// todo white
-	triangles.push_back( Triangle( G, H, D, mirror ) );
+	triangles.push_back( Triangle( G, D, C, white ) );
+	triangles.push_back( Triangle( G, H, D, white ) );
 
 
 	// Short block
-	A = vec3(290,0,114);
-	B = vec3(130,0, 65);
-	C = vec3(240,0,272);
-	D = vec3( 82,0,225);
-
-	E = vec3(290,165,114);
-	F = vec3(130,165, 65);
-	G = vec3(240,165,272);
-	H = vec3( 82,165,225);
+	A = vec3(-0.04504504504504503f, 1.0f, -0.5891891891891892f);
+	B = vec3(0.5315315315315315f, 1.0f, -0.7657657657657657f);
+	C = vec3(0.1351351351351351f, 1.0f, -0.01981981981981984f);
+	D = vec3(0.7045045045045045f, 1.0f, -0.18918918918918914f);
+	E = vec3(-0.04504504504504503f, 0.4054054054054054f, -0.5891891891891892f);
+	F = vec3(0.5315315315315315f, 0.4054054054054054f, -0.7657657657657657f);
+	G = vec3(0.1351351351351351f, 0.4054054054054054f, -0.01981981981981984f);
+	H = vec3(0.7045045045045045f, 0.4054054054054054f, -0.18918918918918914f);
 
 	// Front
 	triangles.push_back( Triangle(E,B,A,red) );
 	triangles.push_back( Triangle(E,F,B,red) );
-
 	// Front
 	triangles.push_back( Triangle(F,D,B,red) );
 	triangles.push_back( Triangle(F,H,D,red) );
-
 	// BACK
 	triangles.push_back( Triangle(H,C,D,red) );
 	triangles.push_back( Triangle(H,G,C,red) );
-
 	// LEFT
 	triangles.push_back( Triangle(G,E,C,red) );
 	triangles.push_back( Triangle(E,A,C,red) );
-
 	// TOP
 	triangles.push_back( Triangle(G,F,E,red) );
 	triangles.push_back( Triangle(G,H,F,red) );
 
-	// ---------------------------------------------------------------------------
+
 	// Tall block
-
-	A = vec3(423,0,247);
-	B = vec3(265,0,296);
-	C = vec3(472,0,406);
-	D = vec3(314,0,456);
-
-	E = vec3(423,330,247);
-	F = vec3(265,330,296);
-	G = vec3(472,330,406);
-	H = vec3(314,330,456);
+	A = vec3(-0.5243243243243243f, 1.0f, -0.1099099099099099f);
+	B = vec3(0.04504504504504503f, 1.0f, 0.06666666666666665f);
+	C = vec3(-0.7009009009009008f, 1.0f, 0.463063063063063f);
+	D = vec3(-0.13153153153153152f, 1.0f, 0.6432432432432433f);
+	E = vec3(-0.5243243243243243f, -0.18918918918918926f, -0.1099099099099099f);
+	F = vec3(0.04504504504504503f, -0.18918918918918926f, 0.06666666666666665f);
+	G = vec3(-0.7009009009009008f, -0.18918918918918926f, 0.463063063063063f);
+	H = vec3(-0.13153153153153152f, -0.18918918918918926f, 0.6432432432432433f);
 
 	// Front
 	triangles.push_back( Triangle(E,B,A,blue) );
 	triangles.push_back( Triangle(E,F,B,blue) );
-
 	// Front
 	triangles.push_back( Triangle(F,D,B,blue) );
 	triangles.push_back( Triangle(F,H,D,blue) );
-
 	// BACK
 	triangles.push_back( Triangle(H,C,D,blue) );
 	triangles.push_back( Triangle(H,G,C,blue) );
-
 	// LEFT
 	triangles.push_back( Triangle(G,E,C,blue) );
 	triangles.push_back( Triangle(E,A,C,blue) );
-
 	// TOP
 	triangles.push_back( Triangle(G,F,E,blue) );
 	triangles.push_back( Triangle(G,H,F,blue) );
-
-	for(size_t i=0; i<triangles.size(); i++) {
-		triangles[i].v0 *= 2/L;
-		triangles[i].v1 *= 2/L;
-		triangles[i].v2 *= 2/L;
-
-		triangles[i].v0 -= vec3(1,1,1);
-		triangles[i].v1 -= vec3(1,1,1);
-		triangles[i].v2 -= vec3(1,1,1);
-
-		triangles[i].v0.x *= -1;
-		triangles[i].v1.x *= -1;
-		triangles[i].v2.x *= -1;
-
-		triangles[i].v0.y *= -1;
-		triangles[i].v1.y *= -1;
-		triangles[i].v2.y *= -1;
-
-		triangles[i].recompute_normal();
-	}
 
     return triangles;
 }
