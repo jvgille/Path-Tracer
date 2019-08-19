@@ -42,8 +42,8 @@ std::vector<Triangle> load_test() {
 	vec3 G(-1,-1, 1);
 	vec3 H( 1,-1, 1);
 
-	triangles.push_back(Triangle(A,E,C,pure_white));
-	triangles.push_back(Triangle(C,E,G,pure_white));
+	triangles.push_back(Triangle(A,E,C,white));
+	triangles.push_back(Triangle(C,E,G,white));
 	triangles.push_back(Triangle(F,B,D,lamp));
 	triangles.push_back(Triangle(H,F,D,lamp));
 

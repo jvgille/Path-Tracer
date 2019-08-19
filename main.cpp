@@ -10,8 +10,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp> // PI
 #include <SDL.h>
-#include "../SDLauxiliary.h"
 
+#include "sdl_helpers.hpp"
 #include "triangle.hpp"
 #include "camera.hpp"
 
@@ -66,7 +66,7 @@ int random_int(int min, int max) {
     return min + rand() % (max-min);
 }
 
-vec3 get_ray_direction_by_pixel(const Camera & camera, int u, int v) {
+vec3 get_ray_direction_by_pixel(const Camera & camera, float u, float v) {
     return normalize(camera.get_rotation_matrix()*vec3(u-SCREEN_WIDTH/2,
                                                        v-SCREEN_HEIGHT/2,
                                                        camera.get_focal_length()));
@@ -116,9 +116,7 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir,
 const vec3 BACKGROUND_COLOR{0,0,0};
 
 /*
-what part of this is lambertian?
- - lambert = 2 * t.color ?
-more surfaces - spheres and quads
+more surfaces - spheres
 importance sampling??
 other brdfs
  - metallic (cosine weighted around reflection?)
@@ -129,24 +127,22 @@ point light, bidirectional
 vec3 trace_ray(vec3 origin, vec3 dir) {
     vec3 color(0,0,0);
     vec3 throughput(1,1,1);
-    while(true) {
+
+    for (int depth=0; ; depth++) {
         if (auto intersection = closest_intersection(origin, dir, triangles)) {
             const Triangle & t = intersection->triangle.get();
 
             dir = t.material.sample_pdf(t.normal, dir);
-
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-
-            if(const Diffuse * d = dynamic_cast<const Diffuse*>(&t.material)) {
-                throughput *= 2*dot(dir, t.normal) * t.material.color;
-            } else {
-                throughput *= dot(dir, t.normal) * t.material.color;
-            }
+            throughput *= t.material.brdf() * dot(dir, t.normal);
 
             // russian roulette
-            float p = luminance(throughput);
+            if (depth < 3)
+                continue;
+
+            float p = max(throughput.x, max(throughput.y, throughput.z));
             if (p < 1) {
                 if (random_real(0,1) > p) {
                     break;
@@ -158,17 +154,14 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
             break;
         }
     }
-    /* cerr << "--------" << endl;
-    print_vec(throughput);
-    print_vec(color); */
-
     return color;
 }
 
 void trace_rays(Camera & camera, BUFFER & buffer) {
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
-            vec3 dir = get_ray_direction_by_pixel(camera, u, v);
+            // add random_real(0,1) for supersampling AA
+            vec3 dir = get_ray_direction_by_pixel(camera, u+random_real(0,1), v+random_real(0,1));
             vec3 color = trace_ray(camera.get_position(), dir);
             buffer[u][v] += color;
         }
@@ -176,22 +169,13 @@ void trace_rays(Camera & camera, BUFFER & buffer) {
     TOTAL_SAMPLES++;
 }
 
-vec3 median_filter(const BUFFER & buffer, int u, int v) {
-    vector<vec3> temp;
-    for (int i = -1; i < 2; i++) {
-        for (int j = -1; j < 2; j++) {
-            if (0 < u+i && u+i < buffer.size() &&
-                0 < v+j && v+j < buffer[u+i].size()) {
-                temp.push_back(buffer[u+i][v+j]);
-            }
-        }
-    }
-    auto comp = [](const vec3 & a, const vec3 & b) { return luminance(a) < luminance(b);};
-    sort(temp.begin(), temp.end(), comp);
-    return temp[temp.size()/2];
+// convert HDR to LDR and apply gamma correction of 2.2
+float to_ldr(float x) {
+    return glm::pow(glm::clamp(x, 0.0f, 1.0f), 1/2.2f)*255 + 0.5;
 }
-
-bool MEDIAN_FILTER = false;
+vec3 to_ldr(const vec3 & c) {
+    return vec3(to_ldr(c.x), to_ldr(c.y), to_ldr(c.z));
+}
 
 void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
     SDL_FillRect(screen, 0, 0);
@@ -201,11 +185,7 @@ void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
     if (TRACE_RAYS) {
         for (int u = 0; u < buffer.size(); u++) {
             for (int v = 0; v < buffer[u].size(); v++) {
-                if (MEDIAN_FILTER) {
-                    PutPixelSDL(screen, u, v, median_filter(buffer, u, v)/float(TOTAL_SAMPLES));
-                } else {
-                    PutPixelSDL(screen, u, v, buffer[u][v]/float(TOTAL_SAMPLES));
-                }
+                PutPixelSDL(screen, u, v, to_ldr(buffer[u][v]/float(TOTAL_SAMPLES)));
             }
         }
     } else {
@@ -257,16 +237,9 @@ bool handle_input(Camera & camera, const float dt) {
 
 
     if (keystate[SDLK_3]) {
-        cerr << "median filter on" << endl;
-        MEDIAN_FILTER = true;
-    } else if (keystate[SDLK_4]) {
-        cerr << "median filter off" << endl;
-        MEDIAN_FILTER = false;
-    }
-    if (keystate[SDLK_5]) {
         cerr << "image saving enabled" << endl;
         LOGGING.save_image = true;
-    } else if (keystate[SDLK_6]) {
+    } else if (keystate[SDLK_4]) {
         cerr << "image saving disabled" << endl;
         LOGGING.save_image = false;
     }
