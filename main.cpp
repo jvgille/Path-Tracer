@@ -9,7 +9,6 @@
 #include <memory>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp> // PI // TODO replace with M_PI
 #include <SDL.h>
 
 #include "sdl_helpers.hpp"
@@ -79,12 +78,11 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
 const vec3 BACKGROUND_COLOR{0,0,0};
 
 /*
-more surfaces - spheres
-importance sampling??
-other brdfs
- - metallic (cosine weighted around reflection?)
-
-point light, bidirectional
+glass
+importance sampling
+metallic (cosine weighted around reflection?)
+bidirectional
+openmp
 */
 
 vec3 trace_ray(vec3 origin, vec3 dir) {
@@ -122,6 +120,7 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
 }
 
 void trace_rays(Camera & camera, BUFFER & buffer) {
+    //#pragma omp parallel for schedule(dynamic, 10) // OpenMP
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
             // add random_real(0,1) for supersampling AA

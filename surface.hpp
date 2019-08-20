@@ -96,31 +96,26 @@ class Sphere : public Surface {
 
 	// derived from scratchapixel
 	optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir) const {
-        float t0, t1;
-
-        vec3 L = this->position - ray_start;
+		vec3 L = this->position - ray_start;
         float tca = dot(L, ray_dir);
-        /* if (tca < 0) { // TODO was commented
-			printf(".");
+        if (tca < 0)
 			return optional<Intersection>();
-		} */
-        float d2 = dot(L, L) - tca * tca;
 
+        float d2 = dot(L, L) - tca * tca;
         if (d2 > this->radius2)
 			return optional<Intersection>();
+
         float thc = sqrt(this->radius2 - d2);
-        t0 = tca - thc;
-        t1 = tca + thc;
 
-        if (t0 > t1) std::swap(t0, t1);
+		float t = tca - thc; // try first intersection first
 
-        if (t0 < 0) {
-            t0 = t1; // if t0 is negative, let's use t1 instead
-            if (t0 < 0)
-				return optional<Intersection>(); // both t0 and t1 are negative
+        if (t < EPSILON) {
+            t = tca + thc; // first one behind, try second
+            if (t < EPSILON)
+				return optional<Intersection>(); // both behind
         }
 
-		return optional<Intersection>(Intersection{ray_start+t0*ray_dir, t0, *this});
+		return optional<Intersection>(Intersection{ray_start + t*ray_dir, t, *this});
 	}
 };
 
@@ -133,6 +128,10 @@ vector<unique_ptr<Surface>> load_cornell() {
 	using namespace Materials;
 
 	vector<unique_ptr<Surface>> surfaces;
+
+	//add_surface(surfaces, Sphere(vec3(0, -1.9f, 0), 1, lamp));
+	add_surface(surfaces, Sphere(vec3(-0.33f, 0.6f, 0.27f), 0.4f, mirror));
+	//add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, red));
 
 	// Room
 	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
@@ -153,15 +152,12 @@ vector<unique_ptr<Surface>> load_cornell() {
 	// Right wall
 	add_surface(surfaces, Triangle(F, B, D, yellow));
 	add_surface(surfaces, Triangle(H, F, D, yellow));
-	// Ceiling - used to be cyan
-	add_surface(surfaces, Triangle(E, F, G, lamp));
+	// Ceiling
+	add_surface(surfaces, Triangle(E, F, G, lamp)); // cyan
 	add_surface(surfaces, Triangle(F, H, G, lamp));
 	// Back wall
 	add_surface(surfaces, Triangle(G, D, C, white));
 	add_surface(surfaces, Triangle(G, H, D, white));
-
-
-	//add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, mirror));
 
 	// Short block
 	A = vec3(-0.04504504504504503f, 1.0f, -0.5891891891891892f);
@@ -189,10 +185,6 @@ vector<unique_ptr<Surface>> load_cornell() {
 	// TOP
 	add_surface(surfaces, Triangle(G, F, E, red));
 	add_surface(surfaces, Triangle(G, H, F, red));
-
-
-
-	add_surface(surfaces, Sphere(vec3(-0.33f, 0.6f, 0.27f), 0.4f, mirror));
 
 	// Tall block
 	/* A = vec3(-0.5243243243243243f, 1.0f, -0.1099099099099099f);

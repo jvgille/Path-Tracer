@@ -26,7 +26,7 @@ class Diffuse : public Material {
     vec3 sample_pdf(const vec3 & normal, const vec3 & incoming) const {
         float u = random_real(0, 1);
         float v = random_real(0, 1);
-        float theta = glm::two_pi<float>()*u;
+        float theta = 2*M_PI*u;
         float phi = acos(2*v-1);
 
         // convert spherical to cartesian
@@ -61,19 +61,6 @@ class Mirror : public Material {
 };
 
 namespace Materials {
-    /*
-    Diffuse red    (vec3(0.75f, 0.15f, 0.15f));
-    Diffuse yellow (vec3(0.75f, 0.75f, 0.15f));
-    Diffuse green  (vec3(0.15f, 0.75f, 0.15f));
-    Diffuse cyan   (vec3(0.15f, 0.75f, 0.75f));
-    Diffuse blue   (vec3(0.15f, 0.15f, 0.75f));
-    Diffuse purple (vec3(0.75f, 0.15f, 0.75f));
-    Diffuse white  (vec3(0.75f, 0.75f, 0.75f));
-    Diffuse pure_white(vec3(1, 1, 1));
-
-    Diffuse lamp(white.color, 3.0f*vec3(1.0f, 1.0f, 0.75f));
-    */
-
     Diffuse red    (vec3(0.95, 0.05, 0.05));
     Diffuse yellow (vec3(0.95, 0.95, 0.05));
     Diffuse green  (vec3(0.05, 0.95, 0.05));

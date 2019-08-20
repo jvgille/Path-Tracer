@@ -1,24 +1,18 @@
-# Top-Level CMakeList.txt
-
 cmake_minimum_required(VERSION 2.6)
 project(MLT)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+find_package(SDL REQUIRED)
+find_package(OpenMP REQUIRED)
+
 add_executable(MLT main.cpp)
-target_compile_options(MLT PUBLIC -std=c++17 -O3 -Wno-register)
+target_compile_options(MLT PUBLIC -std=c++17 -O3 -Wno-register ${OpenMP_CXX_FLAGS})
 
-find_package(SDL)
+include_directories(
+	${SDL_INCLUDE_DIR}
+	${PROJECT_SOURCE_DIR}/../glm
+)
 
-if (NOT SDL_FOUND)
-   message (FATAL_ERROR "SDL not found!")
-endif (NOT SDL_FOUND )
-
-if(SDL_FOUND)
-	include_directories(
-		${SDL_INCLUDE_DIR}
-		${PROJECT_SOURCE_DIR}/../glm
-	)
-	target_link_libraries(MLT ${SDL_LIBRARY})
-endif(SDL_FOUND)
-
+# OpenMP_EXE_LINKER_FLAGS
+target_link_libraries(MLT ${SDL_LIBRARY} ${OpenMP_CXX_FLAGS})

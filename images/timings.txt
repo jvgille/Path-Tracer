@@ -10,5 +10,5 @@ v5, fixed russian
 200	26,940
 
 v6, gamma correct, sphere, mirror
-34,009
-
+v1 31s
+v2 18s
