@@ -6,41 +6,32 @@
 #include <cmath>
 #include <string>
 #include <set>
+#include <memory>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp> // PI
+#include <glm/gtc/constants.hpp> // PI // TODO replace with M_PI
 #include <SDL.h>
 
 #include "sdl_helpers.hpp"
-#include "triangle.hpp"
 #include "camera.hpp"
+#include "surface.hpp"
+#include "intersection.hpp"
+#include "constants.hpp"
+//#include "raster.hpp" // todo
 
 using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 using glm::dot, glm::length, glm::normalize, glm::determinant;
 
-const double EPSILON = 0.00001;
-
-const int SCREEN_WIDTH = 300;
-const int SCREEN_HEIGHT = 300;
-
 bool TRACE_RAYS = true;
 
-vector<Triangle> triangles;
-
-#include "raster.hpp"
+vector<unique_ptr<Surface>> surfaces;
 
 struct {
     bool save_image = false;
     bool exit = false;
     uint next_target = 100;
 } LOGGING;
-
-struct Intersection {
-    vec3 point;
-    float distance;
-    reference_wrapper<const Triangle> triangle;
-};
 
 typedef vector<vector<vec3>> BUFFER;
 uint TOTAL_SAMPLES;
@@ -72,39 +63,11 @@ vec3 get_ray_direction_by_pixel(const Camera & camera, float u, float v) {
                                                        camera.get_focal_length()));
 }
 
-optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir, const Triangle & triangle) {
-    vec3 e1 = triangle.v1 - triangle.v0;
-    vec3 e2 = triangle.v2 - triangle.v0;
-
-    mat3 A(-ray_dir, e1, e2);
-    float det_A = determinant(A);
-    if (-EPSILON < det_A && det_A < EPSILON)
-        return optional<Intersection>();
-
-    vec3 b = ray_start - triangle.v0;
-    float u = determinant(mat3(-ray_dir, b, e2))/det_A;
-    if (u < -EPSILON || u >= 1)
-        return optional<Intersection>();
-
-    float v = determinant(mat3(-ray_dir, e1, b))/det_A;
-    if (v < -EPSILON || u+v >= 1)
-        return optional<Intersection>();
-
-    float t = determinant(mat3(b, e1, e2))/det_A;
-    if (t < EPSILON)
-        return optional<Intersection>();
-
-    vec3 intersection_point = ray_start + t*ray_dir;
-    float distance = length(t*ray_dir);
-
-    return optional<Intersection>(Intersection{intersection_point, distance, triangle});
-}
-
-optional<Intersection> closest_intersection(vec3 start, vec3 dir,
-                                            const vector<Triangle> & triangles) {
+optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
     optional<Intersection> closest;
-    for (const Triangle & triangle : triangles) {
-        if (auto res = intersects(start, dir, triangle)) {
+    for (unique_ptr<Surface> & ptr : surfaces) {
+        const Surface & surface = *ptr;
+        if (auto res = surface.intersects(start, dir)) {
             if (!closest || res->distance < closest->distance) {
                 closest = move(res);
             }
@@ -129,14 +92,15 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
     vec3 throughput(1,1,1);
 
     for (int depth=0; ; depth++) {
-        if (auto intersection = closest_intersection(origin, dir, triangles)) {
-            const Triangle & t = intersection->triangle.get();
+        if (auto intersection = closest_intersection(origin, dir)) {
+            const Surface & t = intersection->surface.get();
+            vec3 normal = t.get_normal(intersection->point);
 
-            dir = t.material.sample_pdf(t.normal, dir);
+            dir = t.material.sample_pdf(normal, dir);
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-            throughput *= t.material.brdf() * dot(dir, t.normal);
+            throughput *= t.material.brdf() * dot(dir, normal);
 
             // russian roulette
             if (depth < 3)
@@ -189,10 +153,11 @@ void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
             }
         }
     } else {
-        for (uint i = 0; i < triangles.size(); i++) {
-            vector<vec3> vertices = {triangles[i].v0, triangles[i].v1, triangles[i].v2};
+        // todo dynamic cast
+        /* for (uint i = 0; i < surfaces.size(); i++) {
+            vector<vec3> vertices = {surfaces[i].v0, surfaces[i].v1, surfaces[i].v2};
             draw_polygon_edges(screen, camera, vertices);
-        }
+        } */
     }
 
     if (SDL_MUSTLOCK(screen))
@@ -318,8 +283,7 @@ int main(int argc, char* argv[]) {
     // slightly offset to avoid alignment lightning bugs
     Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
 
-    triangles = load_cornell();
-    //triangles = load_test();
+    surfaces = load_cornell();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;
