@@ -82,15 +82,45 @@ class Triangle : public Surface {
 
 class Sphere : public Surface {
   public:
-	vec3 center;
-	float radius;
+	const vec3 position;
+	const float radius;
+	const float radius2;
 
-	Sphere(vec3 center, float radius, const Material & material)
-	: center(center), radius(radius)
+	Sphere(vec3 position, float radius, const Material & material)
+	: position(position), radius(radius), radius2(radius*radius)
     , Surface(material) { }
 
 	vec3 get_normal(const vec3 & intersection_point) const {
-		return glm::normalize(intersection_point-center);
+		return glm::normalize(intersection_point-position);
+	}
+
+	// derived from scratchapixel
+	optional<Intersection> intersects(vec3 ray_start, vec3 ray_dir) const {
+        float t0, t1;
+
+        vec3 L = this->position - ray_start;
+        float tca = dot(L, ray_dir);
+        /* if (tca < 0) { // TODO was commented
+			printf(".");
+			return optional<Intersection>();
+		} */
+        float d2 = dot(L, L) - tca * tca;
+
+        if (d2 > this->radius2)
+			return optional<Intersection>();
+        float thc = sqrt(this->radius2 - d2);
+        t0 = tca - thc;
+        t1 = tca + thc;
+
+        if (t0 > t1) std::swap(t0, t1);
+
+        if (t0 < 0) {
+            t0 = t1; // if t0 is negative, let's use t1 instead
+            if (t0 < 0)
+				return optional<Intersection>(); // both t0 and t1 are negative
+        }
+
+		return optional<Intersection>(Intersection{ray_start+t0*ray_dir, t0, *this});
 	}
 };
 
@@ -131,6 +161,8 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(G, H, D, white));
 
 
+	//add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, mirror));
+
 	// Short block
 	A = vec3(-0.04504504504504503f, 1.0f, -0.5891891891891892f);
 	B = vec3(0.5315315315315315f, 1.0f, -0.7657657657657657f);
@@ -140,6 +172,7 @@ vector<unique_ptr<Surface>> load_cornell() {
 	F = vec3(0.5315315315315315f, 0.4054054054054054f, -0.7657657657657657f);
 	G = vec3(0.1351351351351351f, 0.4054054054054054f, -0.01981981981981984f);
 	H = vec3(0.7045045045045045f, 0.4054054054054054f, -0.18918918918918914f);
+
 
 	// Front
 	add_surface(surfaces, Triangle(E, B, A, red));
@@ -158,8 +191,11 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(G, H, F, red));
 
 
+
+	add_surface(surfaces, Sphere(vec3(-0.33f, 0.6f, 0.27f), 0.4f, mirror));
+
 	// Tall block
-	A = vec3(-0.5243243243243243f, 1.0f, -0.1099099099099099f);
+	/* A = vec3(-0.5243243243243243f, 1.0f, -0.1099099099099099f);
 	B = vec3(0.04504504504504503f, 1.0f, 0.06666666666666665f);
 	C = vec3(-0.7009009009009008f, 1.0f, 0.463063063063063f);
 	D = vec3(-0.13153153153153152f, 1.0f, 0.6432432432432433f);
@@ -182,7 +218,7 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(E, A, C, blue));
 	// TOP
 	add_surface(surfaces, Triangle(G, F, E, blue));
-	add_surface(surfaces, Triangle(G, H, F, blue));
+	add_surface(surfaces, Triangle(G, H, F, blue)); */
 
     return surfaces;
 }

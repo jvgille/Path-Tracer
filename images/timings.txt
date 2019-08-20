@@ -1,10 +1,14 @@
 
 v1, iterative
-ceiling		32.385
+32.385
 
 v4, luminance roulette, no cap
-ceiling		14,651
-ceiling 200	31,730
+14,651
+200	31,730
 
 v5, fixed russian
-ceiling 200	26,940
+200	26,940
+
+v6, gamma correct, sphere, mirror
+34,009
+
