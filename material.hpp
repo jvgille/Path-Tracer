@@ -105,16 +105,17 @@ class Glass : public Material {
 };
 
 namespace Materials {
-    Diffuse red    (vec3(0.95, 0.05, 0.05));
-    Diffuse yellow (vec3(0.95, 0.95, 0.05));
-    Diffuse green  (vec3(0.05, 0.95, 0.05));
-    Diffuse cyan   (vec3(0.05, 0.95, 0.95));
-    Diffuse blue   (vec3(0.05, 0.05, 0.95));
-    Diffuse purple (vec3(0.95, 0.05, 0.95));
-    Diffuse white  (vec3(0.95, 0.95, 0.95));
+    Diffuse red    (vec3(1.00, 0.05, 0.05));
+    Diffuse orange (vec3(1.00, 0.50, 0.00));
+    Diffuse yellow (vec3(1.00, 1.00, 0.05));
+    Diffuse green  (vec3(0.05, 1.00, 0.05));
+    Diffuse cyan   (vec3(0.05, 1.00, 1.00));
+    Diffuse blue   (vec3(0.05, 0.05, 1.00));
+    Diffuse purple (vec3(1.00, 0.05, 1.00));
+    Diffuse white  (vec3(1.00, 1.00, 1.00));
     Diffuse black  (vec3(0.05, 0.05, 0.05));
 
-    Diffuse lamp(white.color, 1.5f*vec3(1.0f, 1.0f, 1.0f));
+    Diffuse lamp(white.color, 5.0f*vec3(1.0f, 1.0f, 1.0f));
 
     Mirror mirror;
     Glass glass;

@@ -129,35 +129,35 @@ vector<unique_ptr<Surface>> load_scene() {
 
 	vector<unique_ptr<Surface>> surfaces;
 
-	add_surface(surfaces, Sphere(vec3(-0.3f, 0.8, 0.4f), 0.2, mirror));
-	add_surface(surfaces, Sphere(vec3( 0.3f, 0.8, 0.4f), 0.2, glass));
-  //add_surface(surfaces, Sphere(vec3( 1.5f, -1,  1.5f), 0.2, lamp));
-	add_surface(surfaces, Sphere(vec3( 0.0f, 0.8, 0.7f), 0.2, black));
+	add_surface(surfaces, Sphere(vec3(-1.5f, 0.0f, 0.0f), 0.75, mirror));
+	add_surface(surfaces, Sphere(vec3( 1.5f, 0.0f, 0.0f), 0.75, glass));
+	add_surface(surfaces, Sphere(vec3( 0.0f, 0.0f, 2.0f), 0.75, white));
+	add_surface(surfaces, Sphere(vec3( 0.0f, -10.0f, 0.0f), 5, lamp));
 
 	// Room
-	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
-	vec3 B = vec3(1.0f, 1.0f, -1.0f);
-	vec3 C = vec3(-1.0f, 1.0f, 1.0f);
-	vec3 D = vec3(1.0f, 1.0f, 1.0f);
-	vec3 E = vec3(-1.0f, -1.0f, -1.0f);
-	vec3 F = vec3(1.0f, -1.0f, -1.0f);
-	vec3 G = vec3(-1.0f, -1.0f, 1.0f);
-	vec3 H = vec3(1.0f, -1.0f, 1.0f);
+	vec3 A = vec3(-10.0f,  0.75f, -10.0f);
+	vec3 B = vec3( 10.0f,  0.75f, -10.0f);
+	vec3 C = vec3(-10.0f,  0.75f,  10.0f);
+	vec3 D = vec3( 10.0f,  0.75f,  10.0f);
+	vec3 E = vec3(-10.0f, -10.0f, -10.0f);
+	vec3 F = vec3( 10.0f, -10.0f, -10.0f);
+	vec3 G = vec3(-10.0f, -10.0f,  10.0f);
+	vec3 H = vec3( 10.0f, -10.0f,  10.0f);
 	// Floor - green
-	add_surface(surfaces, Triangle(C, B, A, red));
-	add_surface(surfaces, Triangle(C, D, B, red));
+	add_surface(surfaces, Triangle(C, B, A, orange));
+	add_surface(surfaces, Triangle(C, D, B, orange));
 	// Left wall - purple
 	//add_surface(surfaces, Triangle(A, E, C, purple));
 	//add_surface(surfaces, Triangle(C, E, G, purple));
 	// Right wall - yellow
-	//add_surface(surfaces, Triangle(F, B, D, yellow));
-	//add_surface(surfaces, Triangle(H, F, D, yellow));
+	//add_surface(surfaces, Triangle(F, B, D, lamp));
+	//add_surface(surfaces, Triangle(H, F, D, lamp));
 	// Ceiling - cyan
-	//add_surface(surfaces, Triangle(E, F, G, cyan));
-	//add_surface(surfaces, Triangle(F, H, G, cyan));
+	//add_surface(surfaces, Triangle(E, F, G, lamp));
+	//add_surface(surfaces, Triangle(F, H, G, lamp));
 	// Back wall - white
-	add_surface(surfaces, Triangle(G, D, C, lamp));
-	add_surface(surfaces, Triangle(G, H, D, lamp));
+	//add_surface(surfaces, Triangle(G, D, C, lamp));
+	//add_surface(surfaces, Triangle(G, H, D, lamp));
 
 	return surfaces;
 }

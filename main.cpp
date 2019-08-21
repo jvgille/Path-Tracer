@@ -76,6 +76,7 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
 }
 
 /*
+depth of field
 importance sampling
 metallic (cosine weighted around reflection?)
 bidirectional
@@ -118,13 +119,34 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
     return color;
 }
 
+// DOF parameters
+float aperture_size = 0.15;
+float focal_length = 3; // unrelated to pinhole focal length
+
+vec3 sample_point_on_aperture() {
+    return vec3(0,0,0);
+}
+
 void trace_rays(Camera & camera, BUFFER & buffer) {
-    //#pragma omp parallel for schedule(dynamic, 10) // OpenMP
+    //#pragma omp parallel for schedule(dynamic, 1) // OpenMP
+    const vec3 camera_dir = camera.get_forward();
+    const vec3 camera_pos = camera.get_position();
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
-            // add random_real(0,1) for supersampling AA
+            // add random_real(0,1) for anti-alias
             vec3 dir = get_ray_direction_by_pixel(camera, u+random_real(0,1), v+random_real(0,1));
-            vec3 color = trace_ray(camera.get_position(), dir);
+
+            // use primary ray to calculate secondary ray for depth of field
+            float t = focal_length/dot(camera_dir, dir);
+            vec3 p = t*dir + camera_pos; // point of perfect focus
+
+            float dx = aperture_size * random_real(-0.5, 0.5);
+            float dy = aperture_size * random_real(-0.5, 0.5);
+            // random point on (square) aperture
+            vec3 origin = camera_pos + dx*camera.get_right() + dy*camera.get_downward();
+            dir = normalize(p - origin);
+
+            vec3 color = trace_ray(origin, dir);
             buffer[u][v] += color;
         }
     }

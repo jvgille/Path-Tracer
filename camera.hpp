@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp> // PI
 
-using glm::mat3, glm::vec3, glm::vec2;
+using glm::mat3, glm::vec3, glm::vec2, glm::normalize;
 
 class Camera {
     vec3 pos;
@@ -75,6 +75,18 @@ class Camera {
         } else {
             return false;
         }
+    }
+
+    vec3 get_forward() {
+        return normalize(rot_matrix*vec3(0,0,1));
+    }
+
+    vec3 get_downward() {
+        return normalize(rot_matrix*vec3(0,1,0));
+    }
+
+    vec3 get_right() {
+        return normalize(rot_matrix*vec3(1,0,0));
     }
 };
 
