@@ -12,3 +12,5 @@ v5, fixed russian
 v6, gamma correct, sphere, mirror
 v1 31s
 v2 18s
+
+v7, correct sphere brdf

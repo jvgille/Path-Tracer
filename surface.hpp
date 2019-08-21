@@ -124,12 +124,50 @@ void add_surface(vector<unique_ptr<Surface>> & surfaces, const T & surface) {
 	surfaces.push_back(make_unique<T>(surface));
 }
 
+vector<unique_ptr<Surface>> load_scene() {
+	using namespace Materials;
+
+	vector<unique_ptr<Surface>> surfaces;
+
+	add_surface(surfaces, Sphere(vec3(-0.3f, 0.8, 0.4f), 0.2, mirror));
+	add_surface(surfaces, Sphere(vec3( 0.3f, 0.8, 0.4f), 0.2, glass));
+  //add_surface(surfaces, Sphere(vec3( 1.5f, -1,  1.5f), 0.2, lamp));
+	add_surface(surfaces, Sphere(vec3( 0.0f, 0.8, 0.7f), 0.2, black));
+
+	// Room
+	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
+	vec3 B = vec3(1.0f, 1.0f, -1.0f);
+	vec3 C = vec3(-1.0f, 1.0f, 1.0f);
+	vec3 D = vec3(1.0f, 1.0f, 1.0f);
+	vec3 E = vec3(-1.0f, -1.0f, -1.0f);
+	vec3 F = vec3(1.0f, -1.0f, -1.0f);
+	vec3 G = vec3(-1.0f, -1.0f, 1.0f);
+	vec3 H = vec3(1.0f, -1.0f, 1.0f);
+	// Floor - green
+	add_surface(surfaces, Triangle(C, B, A, red));
+	add_surface(surfaces, Triangle(C, D, B, red));
+	// Left wall - purple
+	//add_surface(surfaces, Triangle(A, E, C, purple));
+	//add_surface(surfaces, Triangle(C, E, G, purple));
+	// Right wall - yellow
+	//add_surface(surfaces, Triangle(F, B, D, yellow));
+	//add_surface(surfaces, Triangle(H, F, D, yellow));
+	// Ceiling - cyan
+	//add_surface(surfaces, Triangle(E, F, G, cyan));
+	//add_surface(surfaces, Triangle(F, H, G, cyan));
+	// Back wall - white
+	add_surface(surfaces, Triangle(G, D, C, lamp));
+	add_surface(surfaces, Triangle(G, H, D, lamp));
+
+	return surfaces;
+}
+
 vector<unique_ptr<Surface>> load_cornell() {
 	using namespace Materials;
 
 	vector<unique_ptr<Surface>> surfaces;
 
-	//add_surface(surfaces, Sphere(vec3(0, -1.9f, 0), 1, lamp));
+	//add_surface(surfaces, Sphere(vec3(0, -1.8f, 0), 1, lamp));
 	add_surface(surfaces, Sphere(vec3(-0.33f, 0.6f, 0.27f), 0.4f, mirror));
 	add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, glass));
 
@@ -143,19 +181,19 @@ vector<unique_ptr<Surface>> load_cornell() {
 	vec3 G = vec3(-1.0f, -1.0f, 1.0f);
 	vec3 H = vec3(1.0f, -1.0f, 1.0f);
 
-	// Floor:
+	// Floor - green
 	add_surface(surfaces, Triangle(C, B, A, green));
 	add_surface(surfaces, Triangle(C, D, B, green));
-	// Left wall
+	// Left wall - purple
 	add_surface(surfaces, Triangle(A, E, C, purple));
 	add_surface(surfaces, Triangle(C, E, G, purple));
-	// Right wall
+	// Right wall - yellow
 	add_surface(surfaces, Triangle(F, B, D, yellow));
 	add_surface(surfaces, Triangle(H, F, D, yellow));
-	// Ceiling
-	add_surface(surfaces, Triangle(E, F, G, lamp)); // cyan
+	// Ceiling - cyan
+	add_surface(surfaces, Triangle(E, F, G, lamp));
 	add_surface(surfaces, Triangle(F, H, G, lamp));
-	// Back wall
+	// Back wall - white
 	add_surface(surfaces, Triangle(G, D, C, white));
 	add_surface(surfaces, Triangle(G, H, D, white));
 

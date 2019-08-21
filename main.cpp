@@ -75,16 +75,15 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
     return closest;
 }
 
-const vec3 BACKGROUND_COLOR{0,0,0};
-
 /*
-glass
 importance sampling
 metallic (cosine weighted around reflection?)
 bidirectional
 openmp
 combinations of materials? also look at glowing mirror & glass
 */
+
+const vec3 BACKGROUND_COLOR{0,0,0};
 
 vec3 trace_ray(vec3 origin, vec3 dir) {
     vec3 color(0,0,0);
@@ -95,23 +94,22 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
             const Surface & t = intersection->surface.get();
             vec3 normal = t.get_normal(intersection->point);
 
-            dir = t.material.sample_pdf(normal, dir);
+            vec3 new_dir = t.material.sample_pdf(normal, dir);
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-            throughput *= t.material.brdf() * dot(dir, normal);
+            throughput *= t.material.brdf(normal, dir, new_dir);
+            dir = new_dir;
 
             // russian roulette
-            if (depth < 3)
+            if (depth < 5)
                 continue;
 
-            float p = max(throughput.x, max(throughput.y, throughput.z));
-            if (p < 1) {
-                if (random_real(0,1) > p) {
-                    break;
-                }
-                throughput *= 1/p; // add the lost energy
+            float p = clamp(max(throughput.x, max(throughput.y, throughput.z)), 0.0f, 1.0f) - 0.1f;
+            if (random_real(0,1) > p) {
+                break;
             }
+            throughput *= 1/p; // add the lost energy
         } else {
             color += BACKGROUND_COLOR * throughput;
             break;
@@ -283,7 +281,7 @@ int main(int argc, char* argv[]) {
     // slightly offset to avoid alignment lightning bugs
     Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
 
-    surfaces = load_cornell();
+    surfaces = load_scene();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;

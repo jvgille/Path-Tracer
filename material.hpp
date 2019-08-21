@@ -15,7 +15,7 @@ class Material {
     : color(color), emittance(emittance) { }
 
     virtual vec3 sample_pdf(const vec3 & normal, const vec3 & incident) const = 0;
-    virtual vec3 brdf() const = 0;
+    virtual vec3 brdf(const vec3 & normal, const vec3 & incident, const vec3 & reflected) const = 0;
 };
 
 class Diffuse : public Material {
@@ -39,8 +39,8 @@ class Diffuse : public Material {
         return direction;
     }
 
-    vec3 brdf() const {
-        return 2.0f * this->color;
+    vec3 brdf(const vec3 & normal, const vec3 & incident, const vec3 & reflected) const {
+        return 2.0f * this->color * dot(reflected, normal);
     }
 };
 
@@ -53,13 +53,14 @@ class Mirror : public Material {
         return incident - 2*dot(normal, incident)*normal;
     }
 
-    vec3 brdf() const {
+    vec3 brdf(const vec3 & normal, const vec3 & incident, const vec3 & reflected) const {
         return this->color;
     }
 };
 
 class Glass : public Material {
-    const float refractive_index = 1.5f; // air is assumed index 1
+    const float refractive_index = 1.5f;
+    const float air_refractive_index = 1.0f;
   public:
     Glass(const vec3 & color = vec3(1,1,1), const vec3 & emittance = vec3(0,0,0))
     : Material(color, emittance) { }
@@ -68,12 +69,12 @@ class Glass : public Material {
         vec3 normal = _normal;
         float n1, n2;
         if (dot(normal, incident) < 0) { // going into the material
-            n1 = 1;
+            n1 = air_refractive_index;
             n2 = refractive_index;
         } else {
             normal *= -1;
             n1 = refractive_index;
-            n2 = 1;
+            n2 = air_refractive_index;
         }
 
         float n = n1/n2; // ratio of refractive indices
@@ -98,7 +99,7 @@ class Glass : public Material {
         }
     }
 
-    vec3 brdf() const {
+    vec3 brdf(const vec3 & normal, const vec3 & incident, const vec3 & reflected) const {
         return this->color;
     }
 };
@@ -111,6 +112,7 @@ namespace Materials {
     Diffuse blue   (vec3(0.05, 0.05, 0.95));
     Diffuse purple (vec3(0.95, 0.05, 0.95));
     Diffuse white  (vec3(0.95, 0.95, 0.95));
+    Diffuse black  (vec3(0.05, 0.05, 0.05));
 
     Diffuse lamp(white.color, 1.5f*vec3(1.0f, 1.0f, 1.0f));
 
