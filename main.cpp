@@ -16,13 +16,10 @@
 #include "surface.hpp"
 #include "intersection.hpp"
 #include "constants.hpp"
-//#include "raster.hpp" // todo
 
 using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 using glm::dot, glm::length, glm::normalize, glm::determinant;
-
-bool TRACE_RAYS = true;
 
 vector<unique_ptr<Surface>> surfaces;
 
@@ -33,12 +30,7 @@ struct {
 } LOGGING;
 
 typedef vector<vector<vec3>> BUFFER;
-uint TOTAL_SAMPLES;
-
-BUFFER new_buffer() {
-    TOTAL_SAMPLES = 0;
-    return vector<vector<vec3>>(SCREEN_WIDTH, vector<vec3>(SCREEN_HEIGHT, vec3()));
-}
+uint TOTAL_SAMPLES = 0;
 
 void print_vec(const vec3 & v) {
     printf("(%f,%f,%f)\n", v.x, v.y, v.z);
@@ -120,6 +112,7 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
 }
 
 // DOF parameters
+bool DOF_on = true;
 float aperture_size = 0.15;
 float focal_length = 3; // unrelated to pinhole focal length
 
@@ -134,17 +127,19 @@ void trace_rays(Camera & camera, BUFFER & buffer) {
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
             // add random_real(0,1) for anti-alias
+            vec3 origin = camera_pos;
             vec3 dir = get_ray_direction_by_pixel(camera, u+random_real(0,1), v+random_real(0,1));
+            if (DOF_on) {
+                // use primary ray to calculate secondary ray for depth of field
+                float t = focal_length/dot(camera_dir, dir);
+                vec3 p = t*dir + camera_pos; // point of perfect focus
 
-            // use primary ray to calculate secondary ray for depth of field
-            float t = focal_length/dot(camera_dir, dir);
-            vec3 p = t*dir + camera_pos; // point of perfect focus
-
-            float dx = aperture_size * random_real(-0.5, 0.5);
-            float dy = aperture_size * random_real(-0.5, 0.5);
-            // random point on (square) aperture
-            vec3 origin = camera_pos + dx*camera.get_right() + dy*camera.get_downward();
-            dir = normalize(p - origin);
+                float dx = aperture_size * random_real(-0.5, 0.5);
+                float dy = aperture_size * random_real(-0.5, 0.5);
+                // random point on (square) aperture
+                origin = camera_pos + dx*camera.get_right() + dy*camera.get_downward();
+                dir = normalize(p - origin);
+            }
 
             vec3 color = trace_ray(origin, dir);
             buffer[u][v] += color;
@@ -166,18 +161,10 @@ void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
     if (SDL_MUSTLOCK(screen))
         SDL_LockSurface(screen);
 
-    if (TRACE_RAYS) {
-        for (int u = 0; u < buffer.size(); u++) {
-            for (int v = 0; v < buffer[u].size(); v++) {
-                PutPixelSDL(screen, u, v, to_ldr(buffer[u][v]/float(TOTAL_SAMPLES)));
-            }
+    for (int u = 0; u < buffer.size(); u++) {
+        for (int v = 0; v < buffer[u].size(); v++) {
+            PutPixelSDL(screen, u, v, to_ldr(buffer[u][v]/float(TOTAL_SAMPLES)));
         }
-    } else {
-        // todo dynamic cast
-        /* for (uint i = 0; i < surfaces.size(); i++) {
-            vector<vec3> vertices = {surfaces[i].v0, surfaces[i].v1, surfaces[i].v2};
-            draw_polygon_edges(screen, camera, vertices);
-        } */
     }
 
     if (SDL_MUSTLOCK(screen))
@@ -187,10 +174,10 @@ void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
 }
 
 bool handle_input(Camera & camera, const float dt) {
+    Uint8* keystate = SDL_GetKeyState(0);
     const float MOVE_SPEED = 1 * dt/1000;
     const float ROT_SPEED = 1 * dt/1000;
-
-    Uint8* keystate = SDL_GetKeyState(0);
+    bool invalidate_buffer = false;
 
     // rotate camera
     float d_rot_x = 0, d_rot_y = 0;
@@ -220,21 +207,45 @@ bool handle_input(Camera & camera, const float dt) {
         dz = -MOVE_SPEED;
     camera.move(dx, dy, dz);
 
-
-    if (keystate[SDLK_3]) {
+    if (keystate[SDLK_1]) {
         cerr << "image saving enabled" << endl;
         LOGGING.save_image = true;
-    } else if (keystate[SDLK_4]) {
+    } else if (keystate[SDLK_2]) {
         cerr << "image saving disabled" << endl;
         LOGGING.save_image = false;
     }
 
-    if (keystate[SDLK_1])
-        return true;
-    else if (keystate[SDLK_2])
-        return false;
-    else
-        return TRACE_RAYS;
+    if (keystate[SDLK_u]) {
+        invalidate_buffer = true;
+        DOF_on = true;
+        cerr << "depth of field enabled" << endl;
+    } else if (keystate[SDLK_j]) {
+        invalidate_buffer = true;
+        DOF_on = false;
+        cerr << "depth of field disabled" << endl;
+    }
+
+    if (keystate[SDLK_i]) {
+        invalidate_buffer = true;
+        focal_length += 0.1f;
+        cerr << "DoF focal length: " << focal_length << endl;
+    } else if (keystate[SDLK_k]) {
+        invalidate_buffer = true;
+        focal_length -= 0.1f;
+        cerr << "DoF focal length: " << focal_length << endl;
+    }
+
+    if (keystate[SDLK_o]) {
+        invalidate_buffer = true;
+        aperture_size += 0.01f;
+        cerr << "DoF aperture size: " << aperture_size << endl;
+    } else if (keystate[SDLK_l]) {
+        aperture_size -= 0.01f;
+        invalidate_buffer = true;
+        cerr << "DoF aperture size: " << aperture_size << endl;
+    }
+
+    return invalidate_buffer;
 }
 
 int update(Camera & camera, BUFFER & buffer, int t) {
@@ -242,43 +253,39 @@ int update(Camera & camera, BUFFER & buffer, int t) {
     float dt = float(t2 - t);
     t = t2;
 
-    bool clear_buffer = false;
-    if (TRACE_RAYS != handle_input(camera, dt)) {
-        TRACE_RAYS = !TRACE_RAYS;
-        clear_buffer = true;
-    }
-
+    bool clear_buffer = handle_input(camera, dt);
     clear_buffer |= camera.update();
 
-    if (TRACE_RAYS) {
-        if (clear_buffer) {
-            buffer = new_buffer();
+
+    if (clear_buffer) {
+        TOTAL_SAMPLES = 0;
+        for (vector<vec3> & col : buffer) {
+            for (auto & v : col) {
+                v = vec3();
+            }
         }
-        trace_rays(camera, buffer);
-    } else {
-        // nothing to do - todo sleep to get 60 hz?
-        // should sleep after drawing tho
     }
+    trace_rays(camera, buffer);
 
     return t;
 }
 
 bool log(SDL_Surface * screen) {
-    if (TRACE_RAYS) {
-        if (TOTAL_SAMPLES % 10 == 0)
-            cerr << TOTAL_SAMPLES << endl;
-        if (TOTAL_SAMPLES >= LOGGING.next_target) {
-            if (LOGGING.save_image) {
-                string path = "../images/";
-                path += to_string(TOTAL_SAMPLES);
-                path += ".bmp";
-                SDL_SaveBMP(screen, path.c_str());
-                cerr << "saved image to " << path << endl;
+    if (TOTAL_SAMPLES % 10 == 0)
+        cerr << TOTAL_SAMPLES << endl;
+    if (TOTAL_SAMPLES >= LOGGING.next_target) {
+        if (LOGGING.save_image) {
+            string path = "../images/";
+            path += to_string(TOTAL_SAMPLES);
+            path += ".bmp";
+            SDL_SaveBMP(screen, path.c_str());
+            cerr << "saved image to " << path << endl;
+            while(LOGGING.next_target <= TOTAL_SAMPLES) {
                 LOGGING.next_target *= 2;
             }
-            if (LOGGING.exit) {
-                return false;
-            }
+        }
+        if (LOGGING.exit) {
+            return false;
         }
     }
     return true;
@@ -303,12 +310,12 @@ int main(int argc, char* argv[]) {
     // slightly offset to avoid alignment lightning bugs
     Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
 
-    surfaces = load_scene();
+    surfaces = load_red_corner();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;
 
-    BUFFER buffer = new_buffer();
+    BUFFER buffer = vector<vector<vec3>>(SCREEN_WIDTH, vector<vec3>(SCREEN_HEIGHT, vec3()));
 
     bool should_continue = true;
     while (NoQuitMessageSDL() && should_continue) {

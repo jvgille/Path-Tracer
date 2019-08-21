@@ -78,15 +78,15 @@ class Camera {
     }
 
     vec3 get_forward() {
-        return normalize(rot_matrix*vec3(0,0,1));
+        return rot_matrix*vec3(0,0,1);
     }
 
     vec3 get_downward() {
-        return normalize(rot_matrix*vec3(0,1,0));
+        return rot_matrix*vec3(0,1,0);
     }
 
     vec3 get_right() {
-        return normalize(rot_matrix*vec3(1,0,0));
+        return rot_matrix*vec3(1,0,0);
     }
 };
 

@@ -116,6 +116,7 @@ namespace Materials {
     Diffuse black  (vec3(0.05, 0.05, 0.05));
 
     Diffuse lamp(white.color, 5.0f*vec3(1.0f, 1.0f, 1.0f));
+    Diffuse dim_lamp(white.color, 1.5f*vec3(1.0f, 1.0f, 1.0f));
 
     Mirror mirror;
     Glass glass;
