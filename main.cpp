@@ -83,6 +83,7 @@ importance sampling
 metallic (cosine weighted around reflection?)
 bidirectional
 openmp
+combinations of materials? also look at glowing mirror & glass
 */
 
 vec3 trace_ray(vec3 origin, vec3 dir) {

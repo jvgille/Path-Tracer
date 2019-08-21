@@ -131,7 +131,7 @@ vector<unique_ptr<Surface>> load_cornell() {
 
 	//add_surface(surfaces, Sphere(vec3(0, -1.9f, 0), 1, lamp));
 	add_surface(surfaces, Sphere(vec3(-0.33f, 0.6f, 0.27f), 0.4f, mirror));
-	//add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, red));
+	add_surface(surfaces, Sphere(vec3(0.33f, 0.6f, -0.39f), 0.4f, glass));
 
 	// Room
 	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
@@ -159,7 +159,7 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(G, D, C, white));
 	add_surface(surfaces, Triangle(G, H, D, white));
 
-	// Short block
+	/* // Short block
 	A = vec3(-0.04504504504504503f, 1.0f, -0.5891891891891892f);
 	B = vec3(0.5315315315315315f, 1.0f, -0.7657657657657657f);
 	C = vec3(0.1351351351351351f, 1.0f, -0.01981981981981984f);
@@ -184,7 +184,7 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(E, A, C, red));
 	// TOP
 	add_surface(surfaces, Triangle(G, F, E, red));
-	add_surface(surfaces, Triangle(G, H, F, red));
+	add_surface(surfaces, Triangle(G, H, F, red)); */
 
 	// Tall block
 	/* A = vec3(-0.5243243243243243f, 1.0f, -0.1099099099099099f);

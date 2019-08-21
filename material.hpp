@@ -2,7 +2,7 @@
 #define MATERIAL
 #include <glm/glm.hpp>
 
-using glm::vec3;
+using glm::vec3, glm::dot;
 
 double random_real(double, double);
 
@@ -14,7 +14,7 @@ class Material {
     Material(const vec3 & color, const vec3 & emittance = vec3(0,0,0))
     : color(color), emittance(emittance) { }
 
-    virtual vec3 sample_pdf(const vec3 & normal, const vec3 & incoming) const = 0;
+    virtual vec3 sample_pdf(const vec3 & normal, const vec3 & incident) const = 0;
     virtual vec3 brdf() const = 0;
 };
 
@@ -23,7 +23,7 @@ class Diffuse : public Material {
     Diffuse(const vec3 & color, const vec3 & emittance = vec3(0,0,0))
     : Material(color, emittance) { }
 
-    vec3 sample_pdf(const vec3 & normal, const vec3 & incoming) const {
+    vec3 sample_pdf(const vec3 & normal, const vec3 & _) const {
         float u = random_real(0, 1);
         float v = random_real(0, 1);
         float theta = 2*M_PI*u;
@@ -46,13 +46,56 @@ class Diffuse : public Material {
 
 class Mirror : public Material {
   public:
-    // ratio diffuse/specular
+    Mirror(const vec3 & color = vec3(1,1,1), const vec3 & emittance = vec3(0,0,0))
+    : Material(color, emittance) { }
 
-    Mirror(const vec3 & color = vec3(1,1,1))
-    : Material(color) { }
+    vec3 sample_pdf(const vec3 & normal, const vec3 & incident) const {
+        return incident - 2*dot(normal, incident)*normal;
+    }
 
-    vec3 sample_pdf(const vec3 & normal, const vec3 & incoming) const {
-        return incoming - 2*glm::dot(normal, incoming)*normal;
+    vec3 brdf() const {
+        return this->color;
+    }
+};
+
+class Glass : public Material {
+    const float refractive_index = 1.5f; // air is assumed index 1
+  public:
+    Glass(const vec3 & color = vec3(1,1,1), const vec3 & emittance = vec3(0,0,0))
+    : Material(color, emittance) { }
+
+    vec3 sample_pdf(const vec3 & _normal, const vec3 & incident) const {
+        vec3 normal = _normal;
+        float n1, n2;
+        if (dot(normal, incident) < 0) { // going into the material
+            n1 = 1;
+            n2 = refractive_index;
+        } else {
+            normal *= -1;
+            n1 = refractive_index;
+            n2 = 1;
+        }
+
+        float n = n1/n2; // ratio of refractive indices
+
+        float cosI = -dot(normal, incident);
+        float sin2T = n*n*(1 - cosI*cosI);
+        float cosT = sqrt(1 - sin2T);
+
+        float reflectance;
+        if (sin2T > 1) { // total internal reflection
+            reflectance = 1;
+        } else {
+            float rOrth = (n1*cosI - n2*cosT)/(n1*cosI + n2*cosT);
+            float rPar = (n2*cosI - n1*cosT)/(n2*cosI + n1*cosT);
+            reflectance = (rOrth*rOrth + rPar*rPar)/2;
+        }
+
+        if (random_real(0,1) < reflectance) { // reflection
+            return incident + 2*cosI*normal;
+        } else { // refraction
+            return n*incident + (n*cosI - cosT)*normal;
+        }
     }
 
     vec3 brdf() const {
@@ -72,6 +115,7 @@ namespace Materials {
     Diffuse lamp(white.color, 1.5f*vec3(1.0f, 1.0f, 1.0f));
 
     Mirror mirror;
+    Glass glass;
 }
 
 #endif // MATERIAL
