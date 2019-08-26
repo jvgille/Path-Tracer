@@ -208,6 +208,14 @@ bool handle_input(Scene & scene, const float dt) {
         LOGGING.save_image = false;
     }
 
+    if (keystate[SDLK_0]) {
+        printf("Camera pos: ");
+        print_vec(scene.camera.get_position());
+        vec2 rot = scene.camera.get_rotation();
+        printf("Camera rot: (%f, %f)", rot.x, rot.y);
+        cout << endl;
+    }
+
     if (keystate[SDLK_u]) {
         invalidate_buffer = true;
         scene.DOF_on = true;
@@ -299,8 +307,8 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Surface * screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
-    //Scene scene(orange_plane());
-    Scene scene(test_scene());
+    //Scene scene = Scenes::sunrise();
+    Scene scene = Scenes::cornell();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;

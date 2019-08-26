@@ -29,6 +29,22 @@ struct Scene {
 
 };
 
+namespace Scenes {
+
+Scene test() {
+    vector<unique_ptr<Surface>> surfaces;
+
+	for (int i = 0; i <= 10; i++) {
+		float v = i/10.0;
+		Material color(MaterialType::DIFFUSE, vec3(1, v, 0));
+		add_surface(surfaces, Sphere(vec3(i, -0.5, 0), 0.5, color));
+	}
+
+    Camera camera(vec3(5,0,-7), vec2(0,0), SCREEN_HEIGHT);
+    Scene scene(camera, vec3(1,1,1), surfaces, false);
+	return scene;
+}
+
 Scene orange_plane() {
     Material orange(MaterialType::DIFFUSE, vec3(1.00, 0.40, 0.00));
     Material white(MaterialType::DIFFUSE, vec3(1.00, 1.00, 1.00));
@@ -51,89 +67,55 @@ Scene orange_plane() {
 	return scene;
 }
 
-Scene test_scene() {
+Scene red_corner() {
+    Material red   (MaterialType::DIFFUSE, vec3(1.00, 0.05, 0.05));
+    Material black (MaterialType::DIFFUSE, vec3(0.05, 0.05, 0.05));
+    Material lamp  (MaterialType::DIFFUSE, vec3(1,1,1), 1.5f*vec3(1.0f, 1.0f, 1.0f));
+    Material mirror(MaterialType::MIRROR);
+    Material glass (MaterialType::GLASS);
+
     vector<unique_ptr<Surface>> surfaces;
-
-	for (int i = 0; i <= 10; i++) {
-		float v = i/10.0;
-		Material color(MaterialType::DIFFUSE, vec3(v, v, v));
-		add_surface(surfaces, Sphere(vec3(i, -0.5, 0), 0.5, color));
-	}
-
-    Camera camera(vec3(5,0,-7), vec2(0,0), SCREEN_HEIGHT);
-    Scene scene(camera, vec3(1,1,1), surfaces, false);
-	return scene;
-}
-
-vector<unique_ptr<Surface>> load_testing() {
-	using namespace Materials;
-	vector<unique_ptr<Surface>> surfaces;
-
-	//add_surface(surfaces, Sphere(vec3(0, -10, 0), 5, lamp));
-
-	add_surface(surfaces, Sphere(vec3(-1, -0.5, -1), 0.5, mirror));
-	add_surface(surfaces, Sphere(vec3(0, -0.5, -1), 0.5, glass));
-	add_surface(surfaces, Sphere(vec3(1, -0.5, -1), 0.5, mirror));
-	add_surface(surfaces, Sphere(vec3(-1, -0.5, 0), 0.5, glass));
-	add_surface(surfaces, Sphere(vec3(0, -0.5, 0), 0.5, lamp));
-	add_surface(surfaces, Sphere(vec3(1, -0.5, 0), 0.5, glass));
-	add_surface(surfaces, Sphere(vec3(-1, -0.5, 1), 0.5, mirror));
-	add_surface(surfaces, Sphere(vec3(0, -0.5, 1), 0.5, glass));
-	add_surface(surfaces, Sphere(vec3(1, -0.5, 1), 0.5, mirror));
-
-	vec3 A = vec3(-100.0f,  0, -100.0f);
-	vec3 B = vec3( 100.0f,  0, -100.0f);
-	vec3 C = vec3(-50.0f,  0,  100.0f);
-	vec3 D = vec3( 100.0f,  0,  100.0f);
-	add_surface(surfaces, Triangle(C, B, A, red));
-
-	return surfaces;
-}
-
-vector<unique_ptr<Surface>> load_orange_plane() {
-	using namespace Materials;
-	vector<unique_ptr<Surface>> surfaces;
-
-	add_surface(surfaces, Sphere(vec3(-1.5f, 0.0f, 0.0f), 0.75, mirror));
-	add_surface(surfaces, Sphere(vec3( 1.5f, 0.0f, 0.0f), 0.75, glass));
-	add_surface(surfaces, Sphere(vec3( 0.0f, 0.0f, 2.0f), 0.75, white));
-	add_surface(surfaces, Sphere(vec3( 0.0f, -10.0f, 0.0f), 5, lamp));
-
-	vec3 A = vec3(0, 0.75, -100);
-	vec3 B = vec3(100, 0.75, 100);
-	vec3 C = vec3(-100, 0.75,  100);
-	add_surface(surfaces, Triangle(C, B, A, orange));
-
-	return surfaces;
-}
-
-vector<unique_ptr<Surface>> load_red_corner() {
-	using namespace Materials;
-	vector<unique_ptr<Surface>> surfaces;
-
 	add_surface(surfaces, Sphere(vec3(0, -1, 2), 1, black));
 	add_surface(surfaces, Sphere(vec3(-1.25, -1, 0), 1, mirror));
 	add_surface(surfaces, Sphere(vec3(1.25, -1, 0), 1, glass));
-
-	vec3 A = vec3(-10.0f,  0, -10.0f);
-	vec3 B = vec3( 10.0f,  0, -10.0f);
-	vec3 C = vec3(-10.0f,  0,  3.0f);
-	vec3 D = vec3( 10.0f,  0,  3.0f);
-	vec3 E = vec3(-10.0f, -100.0f, -10.0f);
-	vec3 F = vec3( 10.0f, -100.0f, -10.0f);
-	vec3 G = vec3(-10.0f, -100.0f,  3.0f);
-	vec3 H = vec3( 10.0f, -100.0f,  3.0f);
-
-	// floor
 	add_surface(surfaces, Triangle(vec3(0,0,-100), vec3(-10,0,3), vec3(10,0,3), red));
 	add_surface(surfaces, Triangle(vec3(0,-100,3), vec3(-10,0,3), vec3(10,0,3), lamp));
 
-    return surfaces;
+    Camera camera(vec3(0,-4.5,-3), vec2(-M_PI_4,0), SCREEN_HEIGHT);
+    Scene scene(camera, vec3(0,0,0), surfaces, false);
+	return scene;
 }
 
-vector<unique_ptr<Surface>> load_cornell() {
-	using namespace Materials;
-	vector<unique_ptr<Surface>> surfaces;
+Scene sunrise() {
+	Material orange  (MaterialType::DIFFUSE, vec3(1.00, 0.40, 0.00));
+    Material white   (MaterialType::DIFFUSE, vec3(0.95, 0.95, 0.95));
+    Material black   (MaterialType::DIFFUSE, vec3(0.05, 0.05, 0.05));
+
+    vector<unique_ptr<Surface>> surfaces;
+	add_surface(surfaces, Triangle(vec3(-100,0,100), vec3(100,0,100), vec3(0,0,-100), black));
+	add_surface(surfaces, Sphere(vec3(-2, -1, 0), 1, white));
+	add_surface(surfaces, Sphere(vec3(-1, -1, 7), 1, orange));
+
+    Camera camera(vec3(0,-1,-2), vec2(0,5.78), SCREEN_HEIGHT);
+    Scene scene(camera, vec3(0.7,0.7,1), surfaces, true, 0.2, 9);
+	return scene;
+}
+
+Scene cornell() {
+	Material red     (MaterialType::DIFFUSE, vec3(1.00, 0.05, 0.05));
+    Material yellow  (MaterialType::DIFFUSE, vec3(1.00, 1.00, 0.05));
+    Material green   (MaterialType::DIFFUSE, vec3(0.05, 1.00, 0.05));
+    Material cyan    (MaterialType::DIFFUSE, vec3(0.05, 1.00, 1.00));
+    Material blue    (MaterialType::DIFFUSE, vec3(0.05, 0.05, 1.00));
+    Material purple  (MaterialType::DIFFUSE, vec3(1.00, 0.05, 1.00));
+    Material white   (MaterialType::DIFFUSE, vec3(1.00, 1.00, 1.00));
+    Material black   (MaterialType::DIFFUSE, vec3(0.05, 0.05, 0.05));
+    Material lamp    (MaterialType::DIFFUSE, white.color, 1.5f*vec3(1.0f, 1.0f, 1.0f));
+
+    Material mirror(MaterialType::MIRROR);
+    Material glass(MaterialType::GLASS);
+
+    vector<unique_ptr<Surface>> surfaces;
 
 	// Room
 	vec3 A = vec3(-1.0f, 1.0f, -1.0f);
@@ -158,8 +140,8 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(E, F, G, cyan));
 	add_surface(surfaces, Triangle(F, H, G, cyan));
 	// Back wall - white
-	add_surface(surfaces, Triangle(G, D, C, dim_lamp));
-	add_surface(surfaces, Triangle(G, H, D, dim_lamp));
+	add_surface(surfaces, Triangle(G, D, C, white));
+	add_surface(surfaces, Triangle(G, H, D, white));
 
 	// Short block
 	A = vec3(-0.04504504504504503f, 1.0f, -0.5891891891891892f);
@@ -213,7 +195,11 @@ vector<unique_ptr<Surface>> load_cornell() {
 	add_surface(surfaces, Triangle(G, F, E, blue));
 	add_surface(surfaces, Triangle(G, H, F, blue));
 
-    return surfaces;
+    Camera camera(vec3(0,0,-3), vec2(0,0), SCREEN_HEIGHT);
+    Scene scene(camera, vec3(1,1,1), surfaces, false);
+	return scene;
 }
+
+} // namespace Scenes
 
 #endif // SCENE

@@ -10,7 +10,6 @@ using glm::mat3, glm::vec3, glm::vec2, glm::normalize;
 const vec2 OFFSET{2*EPSILON, EPSILON}; // slightly offset to avoid alignment lightning bugs
 
 class Camera {
-
     vec3 pos;
     vec2 rot;
     mat3 rot_matrix;
@@ -60,6 +59,10 @@ class Camera {
 
     const vec3 & get_position() const {
         return pos;
+    }
+
+    const vec2 & get_rotation() const {
+        return rot;
     }
 
     const mat3 & get_rotation_matrix() const {
