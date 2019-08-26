@@ -16,12 +16,11 @@
 #include "surface.hpp"
 #include "intersection.hpp"
 #include "constants.hpp"
+#include "scene.hpp"
 
 using namespace std;
 using glm::vec3, glm::ivec2, glm::vec2, glm::mat3, glm::dvec3;
 using glm::dot, glm::length, glm::normalize, glm::determinant;
-
-vector<unique_ptr<Surface>> surfaces;
 
 struct {
     bool save_image = false;
@@ -54,9 +53,9 @@ vec3 get_ray_direction_by_pixel(const Camera & camera, float u, float v) {
                                                        camera.get_focal_length()));
 }
 
-optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
+optional<Intersection> closest_intersection(Scene & scene, vec3 start, vec3 dir) {
     optional<Intersection> closest;
-    for (unique_ptr<Surface> & ptr : surfaces) {
+    for (unique_ptr<Surface> & ptr : scene.surfaces) {
         const Surface & surface = *ptr;
         if (auto res = surface.intersects(start, dir)) {
             if (!closest || res->distance < closest->distance) {
@@ -68,22 +67,21 @@ optional<Intersection> closest_intersection(vec3 start, vec3 dir) {
 }
 
 /*
-depth of field
 importance sampling
 metallic (cosine weighted around reflection?)
+atmospheric fog
 bidirectional
+octree
 openmp
 combinations of materials? also look at glowing mirror & glass
 */
 
-const vec3 BACKGROUND_COLOR{0,0,0};
-
-vec3 trace_ray(vec3 origin, vec3 dir) {
+vec3 trace_ray(Scene & scene, vec3 origin, vec3 dir) {
     vec3 color(0,0,0);
     vec3 throughput(1,1,1);
 
     for (int depth=0; ; depth++) {
-        if (auto intersection = closest_intersection(origin, dir)) {
+        if (auto intersection = closest_intersection(scene, origin, dir)) {
             const Surface & t = intersection->surface.get();
             vec3 normal = t.get_normal(intersection->point);
 
@@ -91,57 +89,52 @@ vec3 trace_ray(vec3 origin, vec3 dir) {
             origin = intersection->point;
 
             color += t.material.emittance * throughput;
-            throughput *= t.material.brdf(normal, dir, new_dir);
+            throughput *= t.material.brdf(normal, new_dir);
             dir = new_dir;
 
             // russian roulette
             if (depth < 5)
                 continue;
 
-            float p = clamp(max(throughput.x, max(throughput.y, throughput.z)), 0.0f, 1.0f) - 0.1f;
+            float p = max(throughput.x, max(throughput.y, throughput.z)) - 0.05f; // -0.05 to prevent infinite rays
             if (random_real(0,1) > p) {
                 break;
             }
             throughput *= 1/p; // add the lost energy
         } else {
-            color += BACKGROUND_COLOR * throughput;
+            color += scene.BG_COLOR * throughput;
             break;
         }
     }
     return color;
 }
 
-// DOF parameters
-bool DOF_on = true;
-float aperture_size = 0.15;
-float focal_length = 3; // unrelated to pinhole focal length
 
-vec3 sample_point_on_aperture() {
-    return vec3(0,0,0);
-}
-
-void trace_rays(Camera & camera, BUFFER & buffer) {
+void trace_rays(Scene & scene, BUFFER & buffer) {
+    const Camera & camera(scene.camera);
     //#pragma omp parallel for schedule(dynamic, 1) // OpenMP
-    const vec3 camera_dir = camera.get_forward();
     const vec3 camera_pos = camera.get_position();
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
-            // add random_real(0,1) for anti-alias
             vec3 origin = camera_pos;
+            // add random_real(0,1) for anti-alias
             vec3 dir = get_ray_direction_by_pixel(camera, u+random_real(0,1), v+random_real(0,1));
-            if (DOF_on) {
+            if (scene.DOF_on) {
                 // use primary ray to calculate secondary ray for depth of field
-                float t = focal_length/dot(camera_dir, dir);
+                float t = scene.DOF_focal_length/dot(camera.get_forward(), dir);
                 vec3 p = t*dir + camera_pos; // point of perfect focus
 
-                float dx = aperture_size * random_real(-0.5, 0.5);
-                float dy = aperture_size * random_real(-0.5, 0.5);
-                // random point on (square) aperture
+                // random point on circular aperture
+                float r = random_real(0, scene.DOF_aperture_size);
+                float phi = random_real(0, 2*M_PI);
+                float dx = r*cos(phi);
+                float dy = r*sin(phi);
+
                 origin = camera_pos + dx*camera.get_right() + dy*camera.get_downward();
                 dir = normalize(p - origin);
             }
 
-            vec3 color = trace_ray(origin, dir);
+            vec3 color = trace_ray(scene, origin, dir);
             buffer[u][v] += color;
         }
     }
@@ -173,7 +166,7 @@ void draw(SDL_Surface * screen, const Camera & camera, const BUFFER & buffer) {
     SDL_UpdateRect(screen, 0, 0, 0, 0);
 }
 
-bool handle_input(Camera & camera, const float dt) {
+bool handle_input(Scene & scene, const float dt) {
     Uint8* keystate = SDL_GetKeyState(0);
     const float MOVE_SPEED = 1 * dt/1000;
     const float ROT_SPEED = 1 * dt/1000;
@@ -189,7 +182,7 @@ bool handle_input(Camera & camera, const float dt) {
         d_rot_y = ROT_SPEED;
     else if (keystate[SDLK_LEFT])
         d_rot_y = -ROT_SPEED;
-    camera.rotate(d_rot_x, d_rot_y);
+    scene.camera.rotate(d_rot_x, d_rot_y);
 
     // move camera
     float dx = 0, dy = 0, dz = 0;
@@ -205,7 +198,7 @@ bool handle_input(Camera & camera, const float dt) {
         dz = MOVE_SPEED;
     else if (keystate[SDLK_s])
         dz = -MOVE_SPEED;
-    camera.move(dx, dy, dz);
+    scene.camera.move(dx, dy, dz);
 
     if (keystate[SDLK_1]) {
         cerr << "image saving enabled" << endl;
@@ -217,44 +210,44 @@ bool handle_input(Camera & camera, const float dt) {
 
     if (keystate[SDLK_u]) {
         invalidate_buffer = true;
-        DOF_on = true;
+        scene.DOF_on = true;
         cerr << "depth of field enabled" << endl;
     } else if (keystate[SDLK_j]) {
         invalidate_buffer = true;
-        DOF_on = false;
+        scene.DOF_on = false;
         cerr << "depth of field disabled" << endl;
     }
 
     if (keystate[SDLK_i]) {
         invalidate_buffer = true;
-        focal_length += 0.1f;
-        cerr << "DoF focal length: " << focal_length << endl;
+        scene.DOF_focal_length += 0.1f;
+        cerr << "DoF focal length: " << scene.DOF_focal_length << endl;
     } else if (keystate[SDLK_k]) {
         invalidate_buffer = true;
-        focal_length -= 0.1f;
-        cerr << "DoF focal length: " << focal_length << endl;
+        scene.DOF_focal_length -= 0.1f;
+        cerr << "DoF focal length: " << scene.DOF_focal_length << endl;
     }
 
     if (keystate[SDLK_o]) {
         invalidate_buffer = true;
-        aperture_size += 0.01f;
-        cerr << "DoF aperture size: " << aperture_size << endl;
+        scene.DOF_aperture_size += 0.01f;
+        cerr << "DoF aperture size: " << scene.DOF_aperture_size << endl;
     } else if (keystate[SDLK_l]) {
-        aperture_size -= 0.01f;
+        scene.DOF_aperture_size -= 0.01f;
         invalidate_buffer = true;
-        cerr << "DoF aperture size: " << aperture_size << endl;
+        cerr << "DoF aperture size: " << scene.DOF_aperture_size << endl;
     }
 
     return invalidate_buffer;
 }
 
-int update(Camera & camera, BUFFER & buffer, int t) {
+int update(Scene & scene, BUFFER & buffer, int t) {
     int t2 = SDL_GetTicks();
     float dt = float(t2 - t);
     t = t2;
 
-    bool clear_buffer = handle_input(camera, dt);
-    clear_buffer |= camera.update();
+    bool clear_buffer = handle_input(scene, dt);
+    clear_buffer |= scene.camera.update();
 
 
     if (clear_buffer) {
@@ -265,7 +258,7 @@ int update(Camera & camera, BUFFER & buffer, int t) {
             }
         }
     }
-    trace_rays(camera, buffer);
+    trace_rays(scene, buffer);
 
     return t;
 }
@@ -306,11 +299,8 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Surface * screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
-
-    // slightly offset to avoid alignment lightning bugs
-    Camera camera(vec3(0,0,10*EPSILON-3), vec2(2*EPSILON, EPSILON), SCREEN_HEIGHT);
-
-    surfaces = load_red_corner();
+    //Scene scene(orange_plane());
+    Scene scene(test_scene());
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;
@@ -319,8 +309,8 @@ int main(int argc, char* argv[]) {
 
     bool should_continue = true;
     while (NoQuitMessageSDL() && should_continue) {
-        time = update(camera, buffer, time);
-        draw(screen, camera, buffer);
+        time = update(scene, buffer, time);
+        draw(screen, scene.camera, buffer);
         should_continue = log(screen);
     }
 

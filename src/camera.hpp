@@ -2,11 +2,15 @@
 #define CAMERA
 
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp> // PI
+
+#include "constants.hpp"
 
 using glm::mat3, glm::vec3, glm::vec2, glm::normalize;
 
+const vec2 OFFSET{2*EPSILON, EPSILON}; // slightly offset to avoid alignment lightning bugs
+
 class Camera {
+
     vec3 pos;
     vec2 rot;
     mat3 rot_matrix;
@@ -24,15 +28,19 @@ class Camera {
     }
 
   public:
+    Camera() : pos() , rot() , focal_length(SCREEN_HEIGHT) {
+        update();
+    }
+
     Camera(vec3 _pos, vec2 _rot, float _focal_length)
     : pos(_pos)
-    , rot(_rot)
+    , rot(_rot + OFFSET)
     , focal_length(_focal_length) {
         update();
     }
 
     void rotate(float dx, float dy) {
-        if (dx == dy && dy == 0)
+        if (dx == 0 && dy == 0)
             return;
 
         rot.x += dx;
@@ -41,7 +49,7 @@ class Camera {
     }
 
     void move(float dx, float dy, float dz) {
-        if (dx == dy && dy == dz && dz == 0)
+        if (dx == 0 && dy == 0 && dz == 0)
             return;
 
         pos.x += dx*cos(-rot.y) - dz*sin(-rot.y);
@@ -66,26 +74,26 @@ class Camera {
         if (dirty) {
             dirty = false;
             update_rotation_matrix();
-            rot.x = glm::clamp(rot.x, -glm::half_pi<float>(), glm::half_pi<float>());
-            while (rot.y > glm::two_pi<float>())
-                rot.y -= glm::two_pi<float>();
+            rot.x = glm::clamp(rot.x, float(-M_PI_2), float(M_PI_2));
+            while (rot.y > 2*M_PI)
+                rot.y -= 2*M_PI;
             while (rot.y < 0)
-                rot.y += glm::two_pi<float>();
+                rot.y += 2*M_PI;
             return true;
         } else {
             return false;
         }
     }
 
-    vec3 get_forward() {
+    vec3 get_forward() const {
         return rot_matrix*vec3(0,0,1);
     }
 
-    vec3 get_downward() {
+    vec3 get_downward() const {
         return rot_matrix*vec3(0,1,0);
     }
 
-    vec3 get_right() {
+    vec3 get_right() const {
         return rot_matrix*vec3(1,0,0);
     }
 };
