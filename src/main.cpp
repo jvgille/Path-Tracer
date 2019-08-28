@@ -67,6 +67,7 @@ optional<Intersection> closest_intersection(Scene & scene, vec3 start, vec3 dir)
 }
 
 /*
+glossy material: fresnel, diffuse instead of refract
 importance sampling
 metallic (cosine weighted around reflection?)
 atmospheric fog
@@ -96,7 +97,7 @@ vec3 trace_ray(Scene & scene, vec3 origin, vec3 dir) {
             if (depth < 5)
                 continue;
 
-            float p = max(throughput.x, max(throughput.y, throughput.z)) - 0.05f; // -0.05 to prevent infinite rays
+            float p = clamp(max(throughput.x, max(throughput.y, throughput.z)), 0.0f, 0.95f);
             if (random_real(0,1) > p) {
                 break;
             }
@@ -112,8 +113,8 @@ vec3 trace_ray(Scene & scene, vec3 origin, vec3 dir) {
 
 void trace_rays(Scene & scene, BUFFER & buffer) {
     const Camera & camera(scene.camera);
-    //#pragma omp parallel for schedule(dynamic, 1) // OpenMP
     const vec3 camera_pos = camera.get_position();
+    //#pragma omp parallel for schedule(dynamic, 1) // OpenMP
     for (int u = 0; u < buffer.size(); u++) {
         for (int v = 0; v < buffer[u].size(); v++) {
             vec3 origin = camera_pos;
@@ -307,8 +308,7 @@ int main(int argc, char* argv[]) {
     }
 
     SDL_Surface * screen = InitializeSDL(SCREEN_WIDTH, SCREEN_HEIGHT);
-    //Scene scene = Scenes::sunrise();
-    Scene scene = Scenes::cornell();
+    Scene scene = Scenes::orange_plane();
 
     const int t_0 = SDL_GetTicks();
     int time = t_0;
