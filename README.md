@@ -1,4 +1,4 @@
-#Path Tracer
+# Path Tracer
 This is a simple, backward path tracer which as of writing supports:
 - global illumination with russian roulette
 - diffuse, mirror, and glass materials
